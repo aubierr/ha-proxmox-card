@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Dernière sauvegarde : date et heure complètes avec secondes, dans la langue de l'utilisateur (par exemple « 12 novembre 2026 à 02:18:05 »).
+- Bande charge / IO delay / dernière sauvegarde : la charge et l'IO delay sont centrés chacun dans sa moitié, et la ligne de dernière sauvegarde est centrée sur toute la largeur de la tuile.
+
 ## 1.0.0
 
 Première version stable. Aucun changement de comportement par rapport à la 0.7.1.

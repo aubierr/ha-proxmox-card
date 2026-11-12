@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -101,8 +101,8 @@ ha-card > * { position:relative; }
 .metric { display:grid; grid-template-columns:42px 1fr 44px; align-items:center; gap:8px; font-size:12px; color:var(--secondary-text-color); }
 .metric b { text-align:right; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
 .ver { font-size:11px; font-weight:600; padding:3px 10px; border-radius:10px; white-space:nowrap; color:var(--px-accent); background:color-mix(in srgb,var(--px-accent) 14%,transparent); }
-.strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); padding-top:14px; border-top:1px solid var(--px-line); }
-.si { --c:var(--px-accent); display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; }
+.strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:12px; padding-top:14px; border-top:1px solid var(--px-line); }
+.si { --c:var(--px-accent); display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; padding:0 10px; }
 .si + .si { border-left:1px solid var(--px-line); }
 .si.warn { --c:var(--px-warn); } .si.crit { --c:var(--px-crit); }
 .si .ic { --mdc-icon-size:18px; flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:var(--c); background:color-mix(in srgb,var(--c) 14%,transparent); }
@@ -154,8 +154,8 @@ ha-card > * { position:relative; }
   .guests.cols-auto .g { grid-template-columns:40px minmax(0,1fr) auto; row-gap:8px; } .guests.cols-auto .g .gms { grid-column:1 / -1; grid-row:2; }
   .dks.cols-auto .dk { grid-template-columns:14px minmax(0,1fr) auto minmax(0,1fr); } .dks.cols-auto .dk .hr { display:none; }
 }
-.strip .si.wide { grid-column:1 / -1; justify-content:center; border-left:0; border-top:1px solid var(--px-line); margin-top:12px; padding-top:12px; }
-.strip .si.wide b { font-size:15px; }
+.strip .si.wide { grid-column:1 / -1; justify-content:center; text-align:center; border-left:0; border-top:1px solid var(--px-line); padding-top:12px; }
+.strip .si.wide b { font-size:15px; white-space:normal; }
 .hist { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
 .sp { --c:var(--px-ok); display:flex; flex-direction:column; gap:4px; min-width:0; }
 .sp.warn { --c:var(--px-warn); } .sp.crit { --c:var(--px-crit); } .sp.none { --c:var(--px-off); }
@@ -227,7 +227,7 @@ function patchChildren(a, b) {
 function fmtDate(state, lang) {
   const d = Date.parse(state);
   if (Number.isNaN(d)) return "";
-  try { return new Date(d).toLocaleString(lang || undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (e) { return new Date(d).toLocaleString(); }
+  try { return new Date(d).toLocaleString(lang || undefined, { dateStyle: "long", timeStyle: "medium" }); } catch (e) { return new Date(d).toLocaleString(); }
 }
 /** Sparkline paths (viewBox 120 x 36) for a series of 0..100 values; null = no data. */
 function sparkPaths(pts) {
