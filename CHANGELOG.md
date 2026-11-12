@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0
+
+Première version stable. Aucun changement de comportement par rapport à la 0.7.1.
+
+- Nœuds, VM et conteneurs LXC, stockages et disques physiques, avec jauges, courbes d'historique, alertes, dernière sauvegarde et résumé du cluster.
+- Boutons d'action avec confirmation, tri, filtres, noms et icônes personnalisés, sections repliables, 2 colonnes, couleur d'accent.
+- Éditeur visuel et interface en 20 langues.
+- Validation automatique sur GitHub (HACS, syntaxe JavaScript, traductions).
+
 ## 0.7.1
 
 - La ligne « Dernière sauvegarde » est centrée sous la charge et l'IO delay, comme eux.

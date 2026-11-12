@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.7.1";
+const VERSION = "1.0.0";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
