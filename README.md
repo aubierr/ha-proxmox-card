@@ -26,12 +26,15 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 
 - **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve`.
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
-- **Tuiles de nœuds** : statut, uptime, jauges CPU, RAM et disque.
-- **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, mini-jauges CPU et RAM.
+- **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
+- **Tuiles de nœuds** : statut, uptime, jauges CPU, RAM, disque et swap, charge système, IO delay et version de Proxmox.
+- **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
+- **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
+- **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
 - **Jauges colorées** : vert, orange, rouge selon des seuils réglables.
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
 - **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
-- **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités et l'en-tête sont masqués.
+- **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
 - **Éditeur visuel** intégré, interface en **français** et **anglais** (détection automatique).
 - Respecte `prefers-reduced-motion`.
 
@@ -83,11 +86,21 @@ show_lxc: true
 show_stopped: true
 show_actions: true
 show_ip: true
+show_uptime: true
+show_badges: true
+show_alerts: true
+show_storage: true
+show_disks: true
+show_swap: true
+show_load: true
+show_version: true
 language: fr
 thresholds:
-  cpu:    { warning: 60, critical: 85 }
-  memory: { warning: 80, critical: 95 }
-  disk:   { warning: 80, critical: 90 }
+  cpu:         { warning: 60, critical: 85 }
+  memory:      { warning: 80, critical: 95 }
+  disk:        { warning: 80, critical: 90 }
+  temperature: { warning: 55, critical: 70 }
+  wear:        { warning: 70, critical: 90 }
 ```
 
 | Option | Type | Défaut | Description |
@@ -100,6 +113,14 @@ thresholds:
 | `show_stopped` | booléen | `true` | Afficher aussi les invités arrêtés (atténués) |
 | `show_actions` | booléen | `true` | Afficher les boutons d'action |
 | `show_ip` | booléen | `true` | Afficher l'adresse IP de l'invité |
+| `show_uptime` | booléen | `true` | Afficher l'uptime des invités qui tournent |
+| `show_badges` | booléen | `true` | Badges sur les invités : verrouillé, agent invité injoignable, problème signalé |
+| `show_alerts` | booléen | `true` | Pastilles d'alerte (mises à jour, sauvegarde, tâches en échec, stockage inactif, disque en défaut) |
+| `show_storage` | booléen | `true` | Section des stockages |
+| `show_disks` | booléen | `true` | Section des disques physiques (SMART) |
+| `show_swap` | booléen | `true` | Jauge de swap sur les nœuds |
+| `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
+| `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
 | `language` | texte | `auto` | `auto`, `en` ou `fr` |
 
@@ -109,7 +130,9 @@ thresholds:
 |---|---|---|
 | `cpu` | 70 % | 90 % |
 | `memory` | 80 % | 95 % |
-| `disk` | 80 % | 90 % |
+| `disk` (nœuds, invités, stockages) | 80 % | 90 % |
+| `temperature` (disques physiques) | 55 °C | 70 °C |
+| `wear` (usure des disques) | 70 % | 90 % |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
 
@@ -119,10 +142,12 @@ La carte parcourt les entités dont la plateforme est `proxmoxve`, les regroupe 
 
 | Appareil | Rôles lus |
 |---|---|
-| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), uptime |
-| **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, adresse IP, boutons start / shutdown / reboot / stop |
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, mise à jour disponible et nombre de mises à jour, sauvegarde en cours, tâches en échec |
+| **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, boutons start / shutdown / reboot / stop |
+| **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
+| **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement |
 
-Le type d'appareil est déterminé d'après son modèle et son nom (`Node …`, `QEMU … (109)`, `LXC … (516)`). Le numéro entre parenthèses devient le VMID affiché.
+Le type d'appareil est déterminé d'après son nom et son modèle (`Node …`, `QEMU … (109)`, `LXC … (516)`, `Storage …`, `Disk …`). Le numéro entre parenthèses devient le VMID affiché.
 
 > **Important** : une partie des entités de l'intégration est **désactivée par défaut** (mémoire, boutons, etc.). Si une jauge affiche « – » ou si les boutons manquent, activez l'entité concernée : Réglages → Appareils et services → *Proxmox VE* → l'appareil → entités désactivées → ⚙ → **Activer**, puis rechargez l'intégration si nécessaire.
 
@@ -140,6 +165,8 @@ Les actions **Arrêter**, **Redémarrer** et **Forcer l'arrêt** demandent un **
 Côté Proxmox, l'utilisateur de l'intégration doit avoir le privilège `VM.PowerMgmt` ; sans lui, les boutons ne sont pas créés par l'intégration.
 
 Pour masquer tous les boutons : `show_actions: false`.
+
+> Les sections et informations sans entité correspondante (par exemple pas de disques SMART, pas d'agent invité) n'apparaissent simplement pas.
 
 ## Dépannage
 

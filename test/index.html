@@ -21,20 +21,32 @@
     entities[entity_id] = { entity_id, platform: "proxmoxve", device_id, translation_key: key };
     states[entity_id] = { entity_id, state: String(state), attributes: extra };
   };
-  dev("n1", "Node pve", "Node"); ent("n1", "sensor", "status", "online"); ent("n1", "sensor", "cpu_used", 23); ent("n1", "sensor", "memory_used_percentage", 61); ent("n1", "sensor", "disk_used_percentage", 84); ent("n1", "sensor", "uptime", 1900000);
-  dev("n2", "Node pve2", "Node"); ent("n2", "sensor", "status", "offline");
-  const guests = [["q1", "QEMU homeassistant (100)", "QEMU", "running", 12, 78, "192.168.1.20"], ["q2", "QEMU docmost (109)", "QEMU", "stopped", 0, 0, ""], ["q3", "QEMU nas (101)", "QEMU", "running", 95, 91, "192.168.1.30"],
+  // Données calquées sur les clés de traduction réelles de l'intégration proxmoxve
+  dev("n1", "Node pve", "Intel(R) Xeon(R) CPU");
+  [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 84], ["sensor", "swap_used_perc", 17],
+   ["sensor", "uptime", new Date(Date.now() - 6.1 * 864e5).toISOString()], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.02], ["sensor", "version", "9.2.26"],
+   ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 12], ["binary_sensor", "backup_running", "on"], ["sensor", "failed_tasks_count", 2]].forEach(([d, k, v]) => ent("n1", d, k, v));
+  dev("n2", "Node pve2", "Intel(R) Xeon(R) CPU"); ent("n2", "binary_sensor", "status", "off");
+  for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 70, "on"], ["s3", "Donnees_SSD0", 93, "on"], ["s4", "Backup_SSD1", 67, "off"]]) {
+    dev(id, `Storage pve/${n}`, "Storage"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
+  }
+  for (const [id, n, t, w, h, prob] of [["d1", "WDC PC SN730 SDBQNTY-256G-1001", 25, 5, 45525, "off"], ["d2", "MTFDDAK480TDS-1AW1ZA", 58, 78, 30210, "off"], ["d3", "SSDSC2KB480G8L", 71, 95, 61004, "on"]]) {
+    dev(id, `Disk pve: ${n}`, "SSD"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
+  }
+  const guests = [["q1", "QEMU homeassistant (101)", "QEMU", "running", 12, 78, "192.168.1.20"], ["q2", "QEMU docmost (109)", "QEMU", "stopped", 0, 0, ""], ["q3", "QEMU nas (104)", "QEMU", "running", 95, 91, "192.168.1.30"],
     ["l1", "LXC CT516 (516)", "LXC", "running", 4, 33, "192.168.1.51"]];
   for (const [id, name, model, st, cpu, mem, ip] of guests) {
-    dev(id, name, model); ent(id, "sensor", "status", st); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem); ent(id, "sensor", "disk_used_perc", st === "running" ? 30 + cpu : "unknown");
-    ent(id, "sensor", "ip_address", ip || "unknown");
+    dev(id, name, model); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem); ent(id, "sensor", "disk_used_perc", st === "running" ? 30 + cpu : "unknown");
+    ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", new Date(Date.now() - 3.2 * 864e5).toISOString());
+    ent(id, "binary_sensor", "locked", id === "l1" ? "on" : "off");
+    if (id === "q3") { ent(id, "binary_sensor", "guest_agent", "off"); ent(id, "binary_sensor", "health", "on"); }
     ent(id, "button", st === "running" ? "shutdown" : "start", "unknown"); if (st === "running") ent(id, "button", "reboot", "unknown");
   }
   const hass = { states, entities, devices, language: "fr", locale: { language: "fr" },
     callService: (d, s, p) => console.log("service", d, s, p) };
   window.__hass = hass;
   document.addEventListener("hass-more-info", (e) => console.log("more-info", e.detail));
-  for (const [sel, cfg] of [["a", { title: "Proxmox" }], ["b", { title: "Proxmox" }]]) {
+  for (const [sel, cfg] of [["a", { title: "Proxmox" }], ["b", { title: "Proxmox", show_disks: false, show_swap: false, show_load: false, show_version: false, show_uptime: false, show_badges: false, show_alerts: false }]]) {
     const c = new ProxmoxCard(); c.setConfig(cfg); c.hass = hass; document.getElementById(sel).append(c);
   }
 </script>
