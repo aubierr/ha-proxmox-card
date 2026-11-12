@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- Mobile : la carte ne remplace plus tout son contenu quand une valeur change, elle ne met à jour que les éléments modifiés (les éléments, icônes et boutons restent en place). Cela supprime la dernière cause connue du saut de page, et les jauges s'animent maintenant d'une valeur à l'autre.
+- Éditeur : les choix du champ « Sens » sont plus courts (« Croissant ↓ » / « Décroissant ↑ », sans le texte entre parenthèses), dans toutes les langues.
+
 ## 0.5.0
 
 - Traduction complète de la carte et de l'éditeur en 20 langues : anglais, français, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais et chinois. La langue suit celle de Home Assistant (`language: auto`) ou se choisit avec `language`.
