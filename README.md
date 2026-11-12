@@ -29,6 +29,7 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
 - **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, charge système, IO delay et version de Proxmox.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
+- **Tri des invités** : boutons Type / ID / Nom / État ; un second clic sur le bouton actif inverse l'ordre (le choix est conservé jusqu'au rechargement de la page, le tri par défaut se règle avec `sort`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
@@ -94,6 +95,8 @@ show_disks: true
 show_swap: true
 show_load: true
 show_version: true
+show_sort: true
+sort: type               # type | id | name | status
 language: fr
 thresholds:
   cpu:         { warning: 60, critical: 85 }
@@ -121,6 +124,8 @@ thresholds:
 | `show_swap` | booléen | `true` | Jauge de swap sur les nœuds |
 | `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
 | `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds |
+| `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
+| `sort` | texte | `type` | Tri par défaut des invités : `type` (VM puis LXC, chacun par ID), `id`, `name` ou `status` (actifs d'abord) |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
 | `language` | texte | `auto` | `auto`, `en` ou `fr` |
 

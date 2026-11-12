@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.3.1";
+const VERSION = "0.4.0";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -14,8 +14,8 @@ const DEFAULT_THRESHOLDS = {
 };
 
 const STRINGS = {
-  en: { nodes: "Nodes", online: "online", running: "running", vms: "VMs", cts: "CTs", cpu: "CPU", ram: "RAM", disk: "Disk", uptime: "Uptime", start: "Start", shutdown: "Shutdown", reboot: "Reboot", stop: "Force stop", noData: "No Proxmox entities found. Is the proxmoxve integration set up?", noRegistry: "This card needs a recent Home Assistant (entity and device registry in the frontend).", guests: "Guests", stopped: "stopped", unknown: "unknown", confirm: "Confirm: ", storage: "Storage", disks: "Physical disks", swap: "Swap", load: "Load", io: "IO", updates: "updates available", backup: "backup running", failed: "failed tasks", inactive: "storage inactive", diskProblem: "disk problem", temp: "Temp", wear: "Wear", locked: "Locked", agentDown: "Guest agent not responding", problem: "Problem reported" },
-  fr: { nodes: "Nœuds", online: "en ligne", running: "actifs", vms: "VM", cts: "CT", cpu: "CPU", ram: "RAM", disk: "Disque", uptime: "Uptime", start: "Démarrer", shutdown: "Arrêter", reboot: "Redémarrer", stop: "Forcer l'arrêt", noData: "Aucune entité Proxmox trouvée. L'intégration proxmoxve est-elle installée ?", noRegistry: "Cette carte nécessite une version récente de Home Assistant.", guests: "Invités", stopped: "arrêté", unknown: "inconnu", confirm: "Confirmer : ", storage: "Stockages", disks: "Disques physiques", swap: "Swap", load: "Charge", io: "IO", updates: "mises à jour", backup: "sauvegarde en cours", failed: "tâches en échec", inactive: "stockage inactif", diskProblem: "disque en défaut", temp: "Temp.", wear: "Usure", locked: "Verrouillé", agentDown: "Agent invité injoignable", problem: "Problème signalé" },
+  en: { nodes: "Nodes", online: "online", running: "running", vms: "VMs", cts: "CTs", cpu: "CPU", ram: "RAM", disk: "Disk", uptime: "Uptime", start: "Start", shutdown: "Shutdown", reboot: "Reboot", stop: "Force stop", noData: "No Proxmox entities found. Is the proxmoxve integration set up?", noRegistry: "This card needs a recent Home Assistant (entity and device registry in the frontend).", guests: "Guests", stopped: "stopped", unknown: "unknown", confirm: "Confirm: ", storage: "Storage", disks: "Physical disks", swap: "Swap", load: "Load", io: "IO", updates: "updates available", backup: "backup running", failed: "failed tasks", inactive: "storage inactive", diskProblem: "disk problem", temp: "Temp", wear: "Wear", locked: "Locked", agentDown: "Guest agent not responding", problem: "Problem reported", sortId: "ID", sortType: "Type", sortName: "Name", sortStatus: "Status" },
+  fr: { nodes: "Nœuds", online: "en ligne", running: "actifs", vms: "VM", cts: "CT", cpu: "CPU", ram: "RAM", disk: "Disque", uptime: "Uptime", start: "Démarrer", shutdown: "Arrêter", reboot: "Redémarrer", stop: "Forcer l'arrêt", noData: "Aucune entité Proxmox trouvée. L'intégration proxmoxve est-elle installée ?", noRegistry: "Cette carte nécessite une version récente de Home Assistant.", guests: "Invités", stopped: "arrêté", unknown: "inconnu", confirm: "Confirmer : ", storage: "Stockages", disks: "Disques physiques", swap: "Swap", load: "Charge", io: "IO", updates: "mises à jour", backup: "sauvegarde en cours", failed: "tâches en échec", inactive: "stockage inactif", diskProblem: "disque en défaut", temp: "Temp.", wear: "Usure", locked: "Verrouillé", agentDown: "Agent invité injoignable", problem: "Problème signalé", sortId: "ID", sortType: "Type", sortName: "Nom", sortStatus: "État" },
 };
 
 const css = `
@@ -23,7 +23,7 @@ const css = `
   --px-accent:#e57000; --px-accent2:#ff9a3c; --px-ok:var(--success-color,#43a047); --px-warn:var(--warning-color,#ffa600);
   --px-crit:var(--error-color,#db4437); --px-off:var(--disabled-text-color,#9e9e9e);
   --px-tile:var(--secondary-background-color,rgba(127,127,127,.08)); --px-line:color-mix(in srgb,var(--primary-text-color) 9%,transparent); }
-ha-card { position:relative; height:100%; overflow:hidden; container-type:inline-size; padding:14px; box-sizing:border-box; display:flex; flex-direction:column; gap:14px; }
+ha-card { position:relative; height:100%; overflow:hidden; container-type:inline-size; padding:18px 16px 16px; box-sizing:border-box; display:flex; flex-direction:column; gap:24px; }
 ha-card::before { content:""; position:absolute; inset:0 0 auto 0; height:110px; pointer-events:none;
   background:linear-gradient(135deg,color-mix(in srgb,var(--px-accent) 24%,transparent),transparent 72%); }
 ha-card > * { position:relative; }
@@ -36,10 +36,14 @@ ha-card > * { position:relative; }
 .chip.warn { background:color-mix(in srgb,var(--px-warn) 20%,transparent); color:color-mix(in srgb,var(--px-warn) 65%,var(--primary-text-color)); }
 .chip.crit { background:color-mix(in srgb,var(--px-crit) 18%,transparent); color:color-mix(in srgb,var(--px-crit) 65%,var(--primary-text-color)); }
 .chip.info { background:color-mix(in srgb,var(--px-accent) 18%,transparent); color:color-mix(in srgb,var(--px-accent) 70%,var(--primary-text-color)); }
-.alerts { display:flex; flex-wrap:wrap; gap:6px; margin-top:-6px; }
-.sec { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary-text-color); }
+.alerts { display:flex; flex-wrap:wrap; gap:6px; margin-top:-12px; }
+.sec { display:flex; align-items:center; gap:10px; margin-bottom:-10px; font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary-text-color); }
 .sec::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--px-accent); }
-.sec::after { content:""; flex:1; height:1px; background:var(--px-line); }
+.sec::after { content:""; flex:1; height:1px; background:var(--px-line); order:1; }
+.sortbar { order:2; display:flex; gap:4px; flex-wrap:wrap; text-transform:none; letter-spacing:0; }
+.sortbtn { font:inherit; font-size:11px; font-weight:500; padding:3px 10px; border-radius:12px; cursor:pointer; border:1px solid var(--px-line); background:transparent; color:var(--secondary-text-color); transition:all .15s; }
+.sortbtn:hover { color:var(--px-accent); border-color:var(--px-accent); }
+.sortbtn.on { background:color-mix(in srgb,var(--px-accent) 16%,transparent); color:var(--px-accent); border-color:var(--px-accent); }
 .dot { width:9px; height:9px; border-radius:50%; background:var(--px-off); flex:none; }
 .dot.on { background:var(--px-ok); box-shadow:0 0 0 3px color-mix(in srgb,var(--px-ok) 25%,transparent); }
 .dot.off { background:var(--px-crit); }
@@ -48,20 +52,21 @@ ha-card > * { position:relative; }
 .bar > i.warn { background:linear-gradient(90deg,color-mix(in srgb,var(--px-warn) 65%,#fff),var(--px-warn)); }
 .bar > i.crit { background:linear-gradient(90deg,color-mix(in srgb,var(--px-crit) 65%,#fff),var(--px-crit)); }
 .nodes { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
-.node { border-radius:16px; padding:14px 10px 14px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:transform .15s, box-shadow .15s; }
+.node { border-radius:18px; padding:18px 14px 16px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:16px; transition:transform .15s, box-shadow .15s; }
 .node:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12); }
 .node.off { opacity:.6; }
 .nhead { display:flex; align-items:center; gap:8px; }
 .nname { font-weight:600; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--primary-text-color); }
 .up { font-size:11px; padding:2px 8px; border-radius:10px; background:color-mix(in srgb,var(--primary-text-color) 8%,transparent); color:var(--secondary-text-color); }
-.rings { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.rings { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .ring { --c:var(--px-ok); display:flex; flex-direction:column; align-items:center; gap:4px; }
 .ring.warn { --c:var(--px-warn); } .ring.crit { --c:var(--px-crit); } .ring.none { --c:var(--px-off); }
-.rg { position:relative; width:100%; max-width:128px; aspect-ratio:1; }
+.rg { position:relative; width:100%; max-width:100px; aspect-ratio:1; }
 .rg svg { width:100%; height:100%; display:block; }
-.rt { fill:none; stroke:color-mix(in srgb,var(--primary-text-color) 11%,transparent); stroke-width:7; }
-.rv { fill:none; stroke:var(--c); stroke-width:7; stroke-linecap:round; transition:stroke-dashoffset .9s ease, stroke .3s; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--c) 50%,transparent)); }
-.rg b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:clamp(15px,5.2cqw,22px); font-weight:700; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
+.rf { fill:color-mix(in srgb,var(--c) 7%,transparent); stroke:none; }
+.rt { fill:none; stroke:color-mix(in srgb,var(--primary-text-color) 10%,transparent); stroke-width:6; }
+.rv { fill:none; stroke:var(--c); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .9s cubic-bezier(.3,.7,.2,1); filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--c) 40%,transparent)); }
+.rg b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:clamp(16px,5cqw,21px); font-weight:700; letter-spacing:-.02em; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
 .rg b small { font-size:.55em; font-weight:500; opacity:.65; margin-left:1px; }
 .ring > span { font-size:12px; font-weight:500; color:var(--secondary-text-color); }
 .metric { display:grid; grid-template-columns:42px 1fr 44px; align-items:center; gap:8px; font-size:12px; color:var(--secondary-text-color); }
@@ -181,7 +186,9 @@ function statusOf(ent, hass) {
   return s === "unavailable" ? "unknown" : "other";
 }
 
+const SORTS = ["type", "id", "name", "status"];
 const EDITOR_DEFAULTS = {
+  sort: "type", show_sort: true,
   title: "Proxmox", node: "", show_nodes: true, show_qemu: true, show_lxc: true, show_stopped: true, show_actions: true, show_ip: true,
   show_uptime: true, show_badges: true, show_alerts: true, show_storage: true, show_disks: true, show_swap: true, show_load: true,
   show_version: true, language: "auto",
@@ -194,13 +201,14 @@ const EDITOR_SCHEMA = [
     { type: "grid", name: "", schema: ["show_nodes", "show_qemu", "show_lxc", "show_stopped", "show_alerts", "show_storage", "show_disks"].map(bool) },
   ] },
   { type: "expandable", name: "", title: "Details", icon: "mdi:tune-variant", expanded: true, schema: [
-    { type: "grid", name: "", schema: ["show_actions", "show_ip", "show_uptime", "show_badges", "show_swap", "show_load", "show_version"].map(bool) },
+    { type: "grid", name: "", schema: ["show_actions", "show_ip", "show_uptime", "show_badges", "show_swap", "show_load", "show_version", "show_sort"].map(bool) },
+    { name: "sort", selector: { select: { options: [{ value: "type", label: "Type (VM, LXC) + ID" }, { value: "id", label: "ID" }, { value: "name", label: "Name / Nom" }, { value: "status", label: "Status / État" }], mode: "dropdown" } } },
   ] },
   { name: "language", selector: { select: { options: [{ value: "auto", label: "Auto" }, { value: "en", label: "English" }, { value: "fr", label: "Français" }], mode: "dropdown" } } },
 ];
 const EDITOR_LABELS = {
-  en: { title: "Title", node: "Filter by node / name (optional)", show_nodes: "Nodes", show_qemu: "Virtual machines", show_lxc: "Containers", show_stopped: "Stopped guests", show_alerts: "Alerts (updates, backup, failed tasks…)", show_storage: "Storages", show_disks: "Physical disks", show_actions: "Power buttons", show_ip: "IP address", show_uptime: "Guest uptime", show_badges: "Guest badges (locked, agent, problem)", show_swap: "Node swap", show_load: "Load and IO delay", show_version: "Proxmox version", language: "Language", Sections: "Sections", Details: "Details" },
-  fr: { title: "Titre", node: "Filtrer par nœud / nom (facultatif)", show_nodes: "Nœuds", show_qemu: "Machines virtuelles", show_lxc: "Conteneurs", show_stopped: "Invités arrêtés", show_alerts: "Alertes (mises à jour, sauvegarde, tâches en échec…)", show_storage: "Stockages", show_disks: "Disques physiques", show_actions: "Boutons marche / arrêt", show_ip: "Adresse IP", show_uptime: "Uptime des invités", show_badges: "Badges des invités (verrouillé, agent, problème)", show_swap: "Swap des nœuds", show_load: "Charge et IO delay", show_version: "Version de Proxmox", language: "Langue", Sections: "Sections", Details: "Détails" },
+  en: { title: "Title", node: "Filter by node / name (optional)", show_nodes: "Nodes", show_qemu: "Virtual machines", show_lxc: "Containers", show_stopped: "Stopped guests", show_alerts: "Alerts (updates, backup, failed tasks…)", show_storage: "Storages", show_disks: "Physical disks", show_actions: "Power buttons", show_ip: "IP address", show_uptime: "Guest uptime", show_badges: "Guest badges (locked, agent, problem)", show_swap: "Node swap", show_load: "Load and IO delay", show_version: "Proxmox version", show_sort: "Sort buttons", sort: "Default guest sort", language: "Language", Sections: "Sections", Details: "Details" },
+  fr: { title: "Titre", node: "Filtrer par nœud / nom (facultatif)", show_nodes: "Nœuds", show_qemu: "Machines virtuelles", show_lxc: "Conteneurs", show_stopped: "Invités arrêtés", show_alerts: "Alertes (mises à jour, sauvegarde, tâches en échec…)", show_storage: "Stockages", show_disks: "Disques physiques", show_actions: "Boutons marche / arrêt", show_ip: "Adresse IP", show_uptime: "Uptime des invités", show_badges: "Badges des invités (verrouillé, agent, problème)", show_swap: "Swap des nœuds", show_load: "Charge et IO delay", show_version: "Version de Proxmox", show_sort: "Boutons de tri", sort: "Tri des invités par défaut", language: "Langue", Sections: "Sections", Details: "Détails" },
 };
 
 /** Visual editor: shows the effective value of every option (missing keys = default), so the toggles never lie. */
@@ -254,9 +262,10 @@ export class ProxmoxCard extends HTMLElement {
     this._cfg = {
       title: "Proxmox", node: "", show_nodes: true, show_qemu: true, show_lxc: true, show_stopped: true,
       show_actions: true, show_ip: true, show_uptime: true, show_badges: true, show_swap: true, show_load: true,
-      show_version: true, show_alerts: true, show_storage: true, show_disks: true, language: "auto", ...config,
+      show_version: true, show_alerts: true, show_storage: true, show_disks: true, show_sort: true, sort: "type", language: "auto", ...config,
       thresholds: Object.fromEntries(Object.entries(DEFAULT_THRESHOLDS).map(([k, v]) => [k, { ...v, ...((config.thresholds || {})[k] || {}) }])),
     };
+    this._sort = null;
     this._last = "";
     if (this._hass) this._render();
   }
@@ -349,9 +358,12 @@ export class ProxmoxCard extends HTMLElement {
     if (v && !/^unk|^unav/.test(v)) parts.push(`v${v}`);
     return parts.length ? `<div class="xtra">${parts.map((p) => `<span>${esc(p)}</span>`).join("")}</div>` : "";
   }
+  _sortState() {
+    return (this._sort ||= { by: SORTS.includes(this._cfg.sort) ? this._cfg.sort : "type", dir: "asc" });
+  }
   _ring(label, v, thr) {
-    const r = 26, circ = 2 * Math.PI * r, off = circ * (1 - (v ?? 0) / 100);
-    return `<div class="ring ${v === null ? "none" : level(v, thr)}"><div class="rg"><svg viewBox="0 0 64 64"><circle class="rt" cx="32" cy="32" r="${r}"/><circle class="rv" cx="32" cy="32" r="${r}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 32 32)"/></svg><b>${v === null ? "–" : Math.round(v)}${v === null ? "" : "<small>%</small>"}</b></div><span>${label}</span></div>`;
+    const r = 43, circ = 2 * Math.PI * r, off = circ * (1 - (v ?? 0) / 100), id = `g${this._rid = (this._rid || 0) + 1}`;
+    return `<div class="ring ${v === null ? "none" : level(v, thr)}"><div class="rg"><svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb,var(--c) 55%,#fff)"/><stop offset="1" style="stop-color:var(--c)"/></linearGradient></defs><circle class="rf" cx="50" cy="50" r="${r - 4}"/><circle class="rt" cx="50" cy="50" r="${r}"/><circle class="rv" cx="50" cy="50" r="${r}" style="stroke:url(#${id})" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 50 50)"/></svg><b>${v === null ? "–" : Math.round(v)}${v === null ? "" : "<small>%</small>"}</b></div><span>${label}</span></div>`;
   }
   _mini(label, v, thr) {
     return `<div class="gm"><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div></div>`;
@@ -406,8 +418,19 @@ export class ProxmoxCard extends HTMLElement {
       }
 
       const shown = guests.filter((g) => c.show_stopped || statusOf(g.roles.status, this._hass) === "on");
+      const st = this._sortState(), dir = st.dir === "desc" ? -1 : 1;
+      const idn = (g) => Number(g.vmid) || 0, byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true });
+      const rank = (g) => (statusOf(g.roles.status, this._hass) === "on" ? 0 : 1);
+      const cmp = {
+        id: (a, b) => idn(a) - idn(b) || byName(a, b),
+        type: (a, b) => (a.kind === b.kind ? 0 : a.kind === "qemu" ? -1 : 1) || idn(a) - idn(b),
+        name: byName,
+        status: (a, b) => rank(a) - rank(b) || idn(a) - idn(b),
+      }[st.by];
+      shown.sort((a, b) => dir * cmp(a, b));
       if (shown.length) {
-        html += `<div class="sec">${esc(this._t("guests"))}</div><div class="guests">` + shown.map((g) => {
+        const sortbar = c.show_sort && shown.length > 1 ? `<span class="sortbar">${SORTS.map((k) => `<button class="sortbtn ${st.by === k ? "on" : ""}" data-sort="${k}">${esc(this._t("sort" + k[0].toUpperCase() + k.slice(1)))}${st.by === k ? (st.dir === "desc" ? " ↓" : " ↑") : ""}</button>`).join("")}</span>` : "";
+        html += `<div class="sec">${esc(this._t("guests"))}${sortbar}</div><div class="guests">` + shown.map((g) => {
           const s = statusOf(g.roles.status, this._hass);
           const on = s === "on";
           const ip = c.show_ip ? this._state(g.roles.ip) : "";
@@ -487,6 +510,14 @@ export class ProxmoxCard extends HTMLElement {
       }
       this._armed = null; clearTimeout(this._armTimer);
       this._hass.callService("button", "press", { entity_id: id });
+      this._last = ""; this._render();
+      return;
+    }
+    const so = e.target.closest("[data-sort]");
+    if (so) {
+      e.stopPropagation();
+      const by = so.dataset.sort, cur = this._sortState();
+      this._sort = cur.by === by ? { by, dir: cur.dir === "asc" ? "desc" : "asc" } : { by, dir: "asc" };
       this._last = ""; this._render();
       return;
     }

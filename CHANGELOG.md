@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Tri des invités : boutons Type / ID / Nom / État dans l'en-tête de la section (un second clic inverse l'ordre), tri par défaut réglable avec `sort`, boutons masquables avec `show_sort`.
+- Plus d'espace entre l'en-tête, les sections et dans les tuiles de nœuds.
+- Jauges des nœuds de taille intermédiaire, plus soignées : trait fin en dégradé, fond teinté, animation adoucie.
+
 ## 0.3.1
 
 - Jauges circulaires des nœuds agrandies (jusqu'à 128 px), chiffre en gras qui s'adapte à la largeur de la carte.
