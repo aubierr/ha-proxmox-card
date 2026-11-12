@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -48,22 +48,22 @@ ha-card > * { position:relative; }
 .bar > i.warn { background:linear-gradient(90deg,color-mix(in srgb,var(--px-warn) 65%,#fff),var(--px-warn)); }
 .bar > i.crit { background:linear-gradient(90deg,color-mix(in srgb,var(--px-crit) 65%,#fff),var(--px-crit)); }
 .nodes { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
-.node { border-radius:16px; padding:14px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:transform .15s, box-shadow .15s; }
+.node { border-radius:16px; padding:14px 10px 14px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:transform .15s, box-shadow .15s; }
 .node:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12); }
 .node.off { opacity:.6; }
 .nhead { display:flex; align-items:center; gap:8px; }
 .nname { font-weight:600; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--primary-text-color); }
 .up { font-size:11px; padding:2px 8px; border-radius:10px; background:color-mix(in srgb,var(--primary-text-color) 8%,transparent); color:var(--secondary-text-color); }
-.rings { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.rings { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
 .ring { --c:var(--px-ok); display:flex; flex-direction:column; align-items:center; gap:4px; }
 .ring.warn { --c:var(--px-warn); } .ring.crit { --c:var(--px-crit); } .ring.none { --c:var(--px-off); }
-.rg { position:relative; width:100%; max-width:76px; aspect-ratio:1; }
+.rg { position:relative; width:100%; max-width:128px; aspect-ratio:1; }
 .rg svg { width:100%; height:100%; display:block; }
-.rt { fill:none; stroke:color-mix(in srgb,var(--primary-text-color) 11%,transparent); stroke-width:6; }
-.rv { fill:none; stroke:var(--c); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .9s ease, stroke .3s; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--c) 50%,transparent)); }
-.rg b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
-.rg b small { font-size:9px; font-weight:500; opacity:.65; margin-left:1px; }
-.ring > span { font-size:11px; font-weight:500; color:var(--secondary-text-color); }
+.rt { fill:none; stroke:color-mix(in srgb,var(--primary-text-color) 11%,transparent); stroke-width:7; }
+.rv { fill:none; stroke:var(--c); stroke-width:7; stroke-linecap:round; transition:stroke-dashoffset .9s ease, stroke .3s; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--c) 50%,transparent)); }
+.rg b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:clamp(15px,5.2cqw,22px); font-weight:700; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
+.rg b small { font-size:.55em; font-weight:500; opacity:.65; margin-left:1px; }
+.ring > span { font-size:12px; font-weight:500; color:var(--secondary-text-color); }
 .metric { display:grid; grid-template-columns:42px 1fr 44px; align-items:center; gap:8px; font-size:12px; color:var(--secondary-text-color); }
 .metric b { text-align:right; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
 .xtra { font-size:11px; color:var(--secondary-text-color); display:flex; gap:6px; flex-wrap:wrap; }
@@ -110,7 +110,7 @@ ha-card > * { position:relative; }
   .g { grid-template-columns:40px minmax(0,1fr) auto; row-gap:8px; } .g .gms { grid-column:1 / -1; grid-row:2; }
 }
 @container (max-width:340px) {
-  .badge { width:38px; height:38px; } .chips { display:none; } .g .gms { gap:8px; } .rg b { font-size:13px; }
+  .badge { width:38px; height:38px; } .chips { display:none; } .g .gms { gap:8px; }
 }
 @media (prefers-reduced-motion:reduce) { .bar > i, .rv, .node, .stor { transition:none; } }
 `;

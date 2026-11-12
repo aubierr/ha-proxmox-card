@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Jauges circulaires des nœuds agrandies (jusqu'à 128 px), chiffre en gras qui s'adapte à la largeur de la carte.
+
 ## 0.3.0
 
 - Refonte visuelle : bandeau dégradé et icône orange, jauges circulaires CPU / RAM / disque sur les nœuds, tuiles pour les invités avec bande d'état colorée, stockages et disques en tuiles, titres de section stylisés.
