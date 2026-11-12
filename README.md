@@ -27,11 +27,11 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve`.
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
-- **Tuiles de nœuds** : statut, uptime, jauges CPU, RAM, disque et swap, charge système, IO delay et version de Proxmox.
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, charge système, IO delay et version de Proxmox.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
-- **Jauges colorées** : vert, orange, rouge selon des seuils réglables.
+- **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
 - **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
 - **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.

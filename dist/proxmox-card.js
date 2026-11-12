@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -20,76 +20,99 @@ const STRINGS = {
 
 const css = `
 :host { display:block; height:100%;
-  --px-accent:#e57000; --px-ok:var(--success-color,#43a047); --px-warn:var(--warning-color,#ffa600);
-  --px-crit:var(--error-color,#db4437); --px-off:var(--disabled-text-color,#9e9e9e); }
-ha-card { height:100%; overflow:hidden; container-type:inline-size; padding:12px; box-sizing:border-box; display:flex; flex-direction:column; gap:12px; }
-.hdr { display:flex; align-items:center; gap:10px; }
-.badge { width:40px; height:40px; border-radius:50%; flex:none; display:grid; place-items:center;
-  background:color-mix(in srgb,var(--px-accent) 16%,transparent); color:var(--px-accent); }
-.title { font-size:16px; font-weight:500; color:var(--primary-text-color); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  --px-accent:#e57000; --px-accent2:#ff9a3c; --px-ok:var(--success-color,#43a047); --px-warn:var(--warning-color,#ffa600);
+  --px-crit:var(--error-color,#db4437); --px-off:var(--disabled-text-color,#9e9e9e);
+  --px-tile:var(--secondary-background-color,rgba(127,127,127,.08)); --px-line:color-mix(in srgb,var(--primary-text-color) 9%,transparent); }
+ha-card { position:relative; height:100%; overflow:hidden; container-type:inline-size; padding:14px; box-sizing:border-box; display:flex; flex-direction:column; gap:14px; }
+ha-card::before { content:""; position:absolute; inset:0 0 auto 0; height:110px; pointer-events:none;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--px-accent) 24%,transparent),transparent 72%); }
+ha-card > * { position:relative; }
+.hdr { display:flex; align-items:center; gap:12px; }
+.badge { --mdc-icon-size:26px; width:46px; height:46px; border-radius:14px; flex:none; display:grid; place-items:center; color:#fff;
+  background:linear-gradient(135deg,var(--px-accent),var(--px-accent2)); box-shadow:0 4px 12px color-mix(in srgb,var(--px-accent) 40%,transparent); }
+.title { font-size:18px; font-weight:600; letter-spacing:.01em; color:var(--primary-text-color); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
-.chip { font-size:11px; padding:3px 9px; border-radius:12px; background:color-mix(in srgb,var(--px-ok) 15%,transparent); color:color-mix(in srgb,var(--px-ok) 60%,var(--primary-text-color)); white-space:nowrap; }
-.chip.warn { background:color-mix(in srgb,var(--px-warn) 18%,transparent); color:color-mix(in srgb,var(--px-warn) 60%,var(--primary-text-color)); }
-.chip.crit { background:color-mix(in srgb,var(--px-crit) 16%,transparent); color:color-mix(in srgb,var(--px-crit) 60%,var(--primary-text-color)); }
-.sec { font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--secondary-text-color); margin-bottom:-4px; }
-.nodes { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
-.node { border-radius:12px; padding:10px 12px; background:var(--secondary-background-color,rgba(127,127,127,.08)); cursor:pointer; display:flex; flex-direction:column; gap:8px; }
-.node.off { opacity:.6; }
-.nhead { display:flex; align-items:center; gap:8px; }
-.nname { font-weight:500; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--primary-text-color); }
-.up { font-size:11px; color:var(--secondary-text-color); }
+.chip { font-size:12px; font-weight:500; padding:4px 10px; border-radius:14px; white-space:nowrap; background:color-mix(in srgb,var(--px-ok) 16%,transparent); color:color-mix(in srgb,var(--px-ok) 65%,var(--primary-text-color)); }
+.chip.warn { background:color-mix(in srgb,var(--px-warn) 20%,transparent); color:color-mix(in srgb,var(--px-warn) 65%,var(--primary-text-color)); }
+.chip.crit { background:color-mix(in srgb,var(--px-crit) 18%,transparent); color:color-mix(in srgb,var(--px-crit) 65%,var(--primary-text-color)); }
+.chip.info { background:color-mix(in srgb,var(--px-accent) 18%,transparent); color:color-mix(in srgb,var(--px-accent) 70%,var(--primary-text-color)); }
+.alerts { display:flex; flex-wrap:wrap; gap:6px; margin-top:-6px; }
+.sec { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--secondary-text-color); }
+.sec::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--px-accent); }
+.sec::after { content:""; flex:1; height:1px; background:var(--px-line); }
 .dot { width:9px; height:9px; border-radius:50%; background:var(--px-off); flex:none; }
 .dot.on { background:var(--px-ok); box-shadow:0 0 0 3px color-mix(in srgb,var(--px-ok) 25%,transparent); }
 .dot.off { background:var(--px-crit); }
+.bar { height:7px; border-radius:4px; background:color-mix(in srgb,var(--primary-text-color) 11%,transparent); overflow:hidden; }
+.bar > i { display:block; height:100%; border-radius:4px; transition:width .7s ease; background:linear-gradient(90deg,color-mix(in srgb,var(--px-ok) 65%,#fff),var(--px-ok)); }
+.bar > i.warn { background:linear-gradient(90deg,color-mix(in srgb,var(--px-warn) 65%,#fff),var(--px-warn)); }
+.bar > i.crit { background:linear-gradient(90deg,color-mix(in srgb,var(--px-crit) 65%,#fff),var(--px-crit)); }
+.nodes { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+.node { border-radius:16px; padding:14px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:transform .15s, box-shadow .15s; }
+.node:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12); }
+.node.off { opacity:.6; }
+.nhead { display:flex; align-items:center; gap:8px; }
+.nname { font-weight:600; font-size:15px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--primary-text-color); }
+.up { font-size:11px; padding:2px 8px; border-radius:10px; background:color-mix(in srgb,var(--primary-text-color) 8%,transparent); color:var(--secondary-text-color); }
+.rings { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.ring { --c:var(--px-ok); display:flex; flex-direction:column; align-items:center; gap:4px; }
+.ring.warn { --c:var(--px-warn); } .ring.crit { --c:var(--px-crit); } .ring.none { --c:var(--px-off); }
+.rg { position:relative; width:100%; max-width:76px; aspect-ratio:1; }
+.rg svg { width:100%; height:100%; display:block; }
+.rt { fill:none; stroke:color-mix(in srgb,var(--primary-text-color) 11%,transparent); stroke-width:6; }
+.rv { fill:none; stroke:var(--c); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .9s ease, stroke .3s; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--c) 50%,transparent)); }
+.rg b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
+.rg b small { font-size:9px; font-weight:500; opacity:.65; margin-left:1px; }
+.ring > span { font-size:11px; font-weight:500; color:var(--secondary-text-color); }
 .metric { display:grid; grid-template-columns:42px 1fr 44px; align-items:center; gap:8px; font-size:12px; color:var(--secondary-text-color); }
-.metric b { text-align:right; font-weight:500; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
-.bar { height:6px; border-radius:3px; background:color-mix(in srgb,var(--primary-text-color) 12%,transparent); overflow:hidden; }
-.bar > i { display:block; height:100%; border-radius:3px; background:var(--px-ok); transition:width .6s ease, background .3s; }
-.bar > i.warn { background:var(--px-warn); } .bar > i.crit { background:var(--px-crit); }
-.guests { display:flex; flex-direction:column; gap:2px; overflow:auto; }
-.g { display:grid; grid-template-columns:28px minmax(0,1.2fr) minmax(0,2.4fr) auto; align-items:center; gap:10px; padding:6px 4px; border-radius:8px; cursor:pointer; }
-.g:hover { background:color-mix(in srgb,var(--primary-text-color) 6%,transparent); }
-.g.off { opacity:.55; }
-.gi { position:relative; color:var(--secondary-text-color); display:grid; place-items:center; }
-.gi .dot { position:absolute; right:-2px; bottom:-1px; width:8px; height:8px; border:2px solid var(--card-background-color,#fff); box-sizing:content-box; }
-.gn { min-width:0; } .gn div:first-child { font-size:14px; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.metric b { text-align:right; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
+.xtra { font-size:11px; color:var(--secondary-text-color); display:flex; gap:6px; flex-wrap:wrap; }
+.xtra span { padding:2px 8px; border-radius:10px; background:color-mix(in srgb,var(--primary-text-color) 7%,transparent); }
+.guests { display:flex; flex-direction:column; gap:8px; }
+.g { display:grid; grid-template-columns:40px minmax(0,1.2fr) minmax(0,2.4fr) auto; align-items:center; gap:12px; padding:10px 12px; border-radius:14px; background:var(--px-tile); border:1px solid var(--px-line); border-left:4px solid var(--px-ok); cursor:pointer; transition:background .15s; }
+.g:hover { background:color-mix(in srgb,var(--px-tile) 80%,var(--primary-text-color) 8%); }
+.g.off { border-left-color:var(--px-off); } .g.other { border-left-color:var(--px-warn); }
+.g.off .gn, .g.off .gms { opacity:.55; }
+.gi { --mdc-icon-size:22px; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; color:var(--px-ok); background:color-mix(in srgb,var(--px-ok) 16%,transparent); }
+.g.off .gi { color:var(--px-off); background:color-mix(in srgb,var(--px-off) 18%,transparent); }
+.g.other .gi { color:var(--px-warn); background:color-mix(in srgb,var(--px-warn) 18%,transparent); }
+.gi .dot { display:none; }
+.gn { min-width:0; } .gn div:first-child { font-size:14px; font-weight:600; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gn div:last-child { font-size:11px; color:var(--secondary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gms { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; min-width:0; }
-.gm { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--secondary-text-color); min-width:0; }
+.gms { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; min-width:0; }
+.gm { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--secondary-text-color); min-width:0; }
 .gl { display:flex; justify-content:space-between; gap:4px; }
-.gl b { font-weight:500; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
-.acts { display:flex; gap:2px; }
-.act { --mdc-icon-size:20px; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; cursor:pointer; color:var(--secondary-text-color); border:0; background:none; padding:0; }
-.act:hover { background:color-mix(in srgb,var(--px-accent) 18%,transparent); color:var(--px-accent); }
-.act.armed { background:var(--px-crit); color:#fff; }
-.empty { padding:16px; text-align:center; color:var(--secondary-text-color); }
-.alerts { display:flex; flex-wrap:wrap; gap:6px; margin-top:-4px; }
-.chip.info { background:color-mix(in srgb,var(--px-accent) 16%,transparent); color:color-mix(in srgb,var(--px-accent) 70%,var(--primary-text-color)); }
-.xtra { font-size:11px; color:var(--secondary-text-color); display:flex; gap:10px; flex-wrap:wrap; }
-.stors { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
-.stor { border-radius:10px; padding:8px 10px; background:var(--secondary-background-color,rgba(127,127,127,.08)); cursor:pointer; display:flex; flex-direction:column; gap:6px; min-width:0; }
-.stor.off { outline:1px solid var(--px-crit); }
-.sh { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--primary-text-color); min-width:0; }
-.sh span:nth-child(2) { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sh b { font-weight:500; font-size:12px; font-variant-numeric:tabular-nums; }
-.dks { display:flex; flex-direction:column; gap:2px; }
-.dk { display:grid; grid-template-columns:14px minmax(0,1.6fr) 52px minmax(0,1fr) 68px; align-items:center; gap:10px; padding:5px 4px; border-radius:8px; cursor:pointer; font-size:12px; color:var(--secondary-text-color); }
-.dk:hover { background:color-mix(in srgb,var(--primary-text-color) 6%,transparent); }
-.dk .dn { font-size:13px; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dk .tp { font-weight:500; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
-.dk .tp.warn { color:var(--px-warn); } .dk .tp.crit { color:var(--px-crit); }
-.dk .hr { text-align:right; font-variant-numeric:tabular-nums; }
-.dk .wr { display:flex; flex-direction:column; gap:2px; }
-.bd { --mdc-icon-size:14px; display:inline-flex; vertical-align:-2px; margin-left:4px; color:var(--px-warn); }
+.gl b { font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
+.acts { display:flex; gap:4px; }
+.act { --mdc-icon-size:20px; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; cursor:pointer; color:var(--secondary-text-color); border:1px solid var(--px-line); background:transparent; padding:0; transition:all .15s; }
+.act:hover { background:color-mix(in srgb,var(--px-accent) 18%,transparent); color:var(--px-accent); border-color:var(--px-accent); }
+.act.armed { background:var(--px-crit); color:#fff; border-color:var(--px-crit); }
+.bd { --mdc-icon-size:15px; display:inline-flex; vertical-align:-3px; margin-left:6px; color:var(--px-warn); }
 .bd.crit { color:var(--px-crit); }
+.stors { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+.stor { border-radius:14px; padding:10px 12px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; display:flex; flex-direction:column; gap:8px; min-width:0; transition:transform .15s; }
+.stor:hover { transform:translateY(-1px); }
+.stor.off { border-color:var(--px-crit); }
+.sh { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; color:var(--primary-text-color); min-width:0; }
+.sh span:nth-child(2) { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sh b { font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+.dks { display:flex; flex-direction:column; gap:6px; }
+.dk { display:grid; grid-template-columns:14px minmax(0,1.6fr) auto minmax(0,1fr) 68px; align-items:center; gap:12px; padding:8px 12px; border-radius:12px; background:var(--px-tile); border:1px solid var(--px-line); cursor:pointer; font-size:12px; color:var(--secondary-text-color); }
+.dk .dn { font-size:13px; font-weight:500; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dk .tp { font-weight:600; padding:2px 9px; border-radius:10px; font-variant-numeric:tabular-nums; color:var(--px-ok); background:color-mix(in srgb,var(--px-ok) 14%,transparent); }
+.dk .tp.warn { color:var(--px-warn); background:color-mix(in srgb,var(--px-warn) 16%,transparent); }
+.dk .tp.crit { color:var(--px-crit); background:color-mix(in srgb,var(--px-crit) 16%,transparent); }
+.dk .hr { text-align:right; font-variant-numeric:tabular-nums; }
+.dk .wr { display:flex; flex-direction:column; gap:3px; }
+.empty { padding:16px; text-align:center; color:var(--secondary-text-color); }
 @container (max-width:520px) {
-  .dk { grid-template-columns:14px minmax(0,1fr) 48px minmax(0,1fr); } .dk .hr { display:none; }
-  .g { grid-template-columns:28px minmax(0,1fr) auto; row-gap:6px; } .g .gms { grid-column:2 / -1; grid-row:2; }
+  .dk { grid-template-columns:14px minmax(0,1fr) auto minmax(0,1fr); } .dk .hr { display:none; }
+  .g { grid-template-columns:40px minmax(0,1fr) auto; row-gap:8px; } .g .gms { grid-column:1 / -1; grid-row:2; }
 }
 @container (max-width:340px) {
-  .badge { display:none; } .chips { display:none; } .g .gms { gap:6px; }
+  .badge { width:38px; height:38px; } .chips { display:none; } .g .gms { gap:8px; } .rg b { font-size:13px; }
 }
-@media (prefers-reduced-motion:reduce) { .bar > i { transition:none; } }
+@media (prefers-reduced-motion:reduce) { .bar > i, .rv, .node, .stor { transition:none; } }
 `;
 
 const ICON = { server: "mdi:server", vm: "mdi:monitor", ct: "mdi:cube-outline", power: "mdi:power", restart: "mdi:restart", stop: "mdi:stop-circle-outline", proxmox: "mdi:server-network" };
@@ -158,6 +181,58 @@ function statusOf(ent, hass) {
   return s === "unavailable" ? "unknown" : "other";
 }
 
+const EDITOR_DEFAULTS = {
+  title: "Proxmox", node: "", show_nodes: true, show_qemu: true, show_lxc: true, show_stopped: true, show_actions: true, show_ip: true,
+  show_uptime: true, show_badges: true, show_alerts: true, show_storage: true, show_disks: true, show_swap: true, show_load: true,
+  show_version: true, language: "auto",
+};
+const bool = (name) => ({ name, selector: { boolean: {} } });
+const EDITOR_SCHEMA = [
+  { name: "title", selector: { text: {} } },
+  { name: "node", selector: { text: {} } },
+  { type: "expandable", name: "", title: "Sections", icon: "mdi:view-dashboard-outline", expanded: true, schema: [
+    { type: "grid", name: "", schema: ["show_nodes", "show_qemu", "show_lxc", "show_stopped", "show_alerts", "show_storage", "show_disks"].map(bool) },
+  ] },
+  { type: "expandable", name: "", title: "Details", icon: "mdi:tune-variant", expanded: true, schema: [
+    { type: "grid", name: "", schema: ["show_actions", "show_ip", "show_uptime", "show_badges", "show_swap", "show_load", "show_version"].map(bool) },
+  ] },
+  { name: "language", selector: { select: { options: [{ value: "auto", label: "Auto" }, { value: "en", label: "English" }, { value: "fr", label: "Français" }], mode: "dropdown" } } },
+];
+const EDITOR_LABELS = {
+  en: { title: "Title", node: "Filter by node / name (optional)", show_nodes: "Nodes", show_qemu: "Virtual machines", show_lxc: "Containers", show_stopped: "Stopped guests", show_alerts: "Alerts (updates, backup, failed tasks…)", show_storage: "Storages", show_disks: "Physical disks", show_actions: "Power buttons", show_ip: "IP address", show_uptime: "Guest uptime", show_badges: "Guest badges (locked, agent, problem)", show_swap: "Node swap", show_load: "Load and IO delay", show_version: "Proxmox version", language: "Language", Sections: "Sections", Details: "Details" },
+  fr: { title: "Titre", node: "Filtrer par nœud / nom (facultatif)", show_nodes: "Nœuds", show_qemu: "Machines virtuelles", show_lxc: "Conteneurs", show_stopped: "Invités arrêtés", show_alerts: "Alertes (mises à jour, sauvegarde, tâches en échec…)", show_storage: "Stockages", show_disks: "Disques physiques", show_actions: "Boutons marche / arrêt", show_ip: "Adresse IP", show_uptime: "Uptime des invités", show_badges: "Badges des invités (verrouillé, agent, problème)", show_swap: "Swap des nœuds", show_load: "Charge et IO delay", show_version: "Version de Proxmox", language: "Langue", Sections: "Sections", Details: "Détails" },
+};
+
+/** Visual editor: shows the effective value of every option (missing keys = default), so the toggles never lie. */
+export class ProxmoxCardEditor extends HTMLElement {
+  setConfig(config) { this._config = config || {}; this._render(); }
+  set hass(hass) { this._hass = hass; if (this._form) this._form.hass = hass; this._render(); }
+  _render() {
+    if (!this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.schema = EDITOR_SCHEMA;
+      this._form.addEventListener("value-changed", (e) => {
+        e.stopPropagation();
+        const config = { ...this._config };
+        for (const [k, v] of Object.entries(e.detail.value || {})) {
+          if (k in EDITOR_DEFAULTS && v === EDITOR_DEFAULTS[k] && !(k in this._config)) continue; // keep YAML tidy
+          config[k] = v;
+        }
+        this._config = config;
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+      });
+      this.appendChild(this._form);
+    }
+    const lang = ((this._config.language && this._config.language !== "auto" ? this._config.language : this._hass?.locale?.language || this._hass?.language) || "en").slice(0, 2);
+    const labels = EDITOR_LABELS[lang] || EDITOR_LABELS.en;
+    this._form.hass = this._hass;
+    this._form.computeLabel = (s) => labels[s.name] || labels[s.title] || s.name || s.title;
+    this._form.data = { ...EDITOR_DEFAULTS, ...this._config };
+  }
+}
+if (!customElements.get("proxmox-card-editor")) customElements.define("proxmox-card-editor", ProxmoxCardEditor);
+
 export class ProxmoxCard extends HTMLElement {
   constructor() {
     super();
@@ -173,32 +248,7 @@ export class ProxmoxCard extends HTMLElement {
   }
 
   static getStubConfig() { return { type: "custom:proxmox-card", title: "Proxmox" }; }
-  static getConfigForm() {
-    return {
-      schema: [
-        { name: "title", selector: { text: {} } },
-        { name: "node", selector: { text: {} } },
-        { type: "grid", name: "", schema: [
-          { name: "show_nodes", selector: { boolean: {} } },
-          { name: "show_qemu", selector: { boolean: {} } },
-          { name: "show_lxc", selector: { boolean: {} } },
-          { name: "show_stopped", selector: { boolean: {} } },
-          { name: "show_actions", selector: { boolean: {} } },
-          { name: "show_ip", selector: { boolean: {} } },
-          { name: "show_uptime", selector: { boolean: {} } },
-          { name: "show_badges", selector: { boolean: {} } },
-          { name: "show_alerts", selector: { boolean: {} } },
-          { name: "show_storage", selector: { boolean: {} } },
-          { name: "show_disks", selector: { boolean: {} } },
-          { name: "show_swap", selector: { boolean: {} } },
-          { name: "show_load", selector: { boolean: {} } },
-          { name: "show_version", selector: { boolean: {} } },
-        ] },
-        { name: "language", selector: { select: { options: ["auto", "en", "fr"], mode: "dropdown" } } },
-      ],
-      computeLabel: (s) => ({ title: "Title", node: "Filter by node / name (optional)", show_nodes: "Show nodes", show_qemu: "Show VMs", show_lxc: "Show containers", show_stopped: "Show stopped guests", show_actions: "Show power buttons", show_ip: "Show IP address", show_uptime: "Show guest uptime", show_badges: "Show guest badges (locked, agent, problem)", show_alerts: "Show alerts (updates, backup, failed tasks…)", show_storage: "Show storages", show_disks: "Show physical disks", show_swap: "Show swap on nodes", show_load: "Show load and IO delay", show_version: "Show Proxmox version", language: "Language" }[s.name] || s.name),
-    };
-  }
+  static getConfigElement() { return document.createElement("proxmox-card-editor"); }
 
   setConfig(config) {
     this._cfg = {
@@ -299,6 +349,10 @@ export class ProxmoxCard extends HTMLElement {
     if (v && !/^unk|^unav/.test(v)) parts.push(`v${v}`);
     return parts.length ? `<div class="xtra">${parts.map((p) => `<span>${esc(p)}</span>`).join("")}</div>` : "";
   }
+  _ring(label, v, thr) {
+    const r = 26, circ = 2 * Math.PI * r, off = circ * (1 - (v ?? 0) / 100);
+    return `<div class="ring ${v === null ? "none" : level(v, thr)}"><div class="rg"><svg viewBox="0 0 64 64"><circle class="rt" cx="32" cy="32" r="${r}"/><circle class="rv" cx="32" cy="32" r="${r}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 32 32)"/></svg><b>${v === null ? "–" : Math.round(v)}${v === null ? "" : "<small>%</small>"}</b></div><span>${label}</span></div>`;
+  }
   _mini(label, v, thr) {
     return `<div class="gm"><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div></div>`;
   }
@@ -345,9 +399,7 @@ export class ProxmoxCard extends HTMLElement {
           const up = fmtUptime(this._state(n.roles.uptime));
           return `<div class="node ${s === "off" ? "off" : ""}" data-more="${esc((n.roles.status || n.roles.cpu).entity_id)}">
             <div class="nhead"><span class="dot ${s === "on" ? "on" : s === "off" ? "off" : ""}"></span><span class="nname">${esc(n.name)}</span>${up ? `<span class="up">${esc(up)}</span>` : ""}</div>
-            ${this._metric(this._t("cpu"), this._pct(n, "cpu"), T.cpu)}
-            ${this._metric(this._t("ram"), this._pct(n, "mem"), T.memory)}
-            ${this._metric(this._t("disk"), this._pct(n, "disk"), T.disk)}
+            <div class="rings">${this._ring(this._t("cpu"), this._pct(n, "cpu"), T.cpu)}${this._ring(this._t("ram"), this._pct(n, "mem"), T.memory)}${this._ring(this._t("disk"), this._pct(n, "disk"), T.disk)}</div>
             ${c.show_swap && n.roles.swap_pct ? this._metric(this._t("swap"), this._pct(n, "swap"), T.memory) : ""}
             ${this._xtra(n)}</div>`;
         }).join("") + `</div>`;
@@ -378,7 +430,7 @@ export class ProxmoxCard extends HTMLElement {
             const armed = this._armed === id;
             return `<button class="act ${armed ? "armed" : ""}" data-press="${esc(id)}" data-danger="${r === "btn_start" ? 0 : 1}" title="${esc(armed ? this._t("confirm") + label : label)}"><ha-icon icon="${ic}"></ha-icon></button>`;
           }).join("") : "";
-          return `<div class="g ${on ? "" : "off"}" data-more="${esc((g.roles.status || g.roles.cpu).entity_id)}">
+          return `<div class="g ${on ? "" : s === "off" ? "off" : "other"}" data-more="${esc((g.roles.status || g.roles.cpu).entity_id)}">
             <div class="gi"><ha-icon icon="${g.kind === "lxc" ? ICON.ct : ICON.vm}"></ha-icon><span class="dot ${on ? "on" : s === "off" ? "off" : ""}"></span></div>
             <div class="gn"><div>${esc(g.name)}${badges}</div><div>${esc(sub)}</div></div>
             <div class="gms">

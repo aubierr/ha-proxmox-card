@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Refonte visuelle : bandeau dégradé et icône orange, jauges circulaires CPU / RAM / disque sur les nœuds, tuiles pour les invités avec bande d'état colorée, stockages et disques en tuiles, titres de section stylisés.
+- Éditeur visuel : les cases affichent maintenant la vraie valeur de chaque option (une option absente est active par défaut), sections repliables, libellés FR/EN.
+
 ## 0.2.0
 
 - Nouvelles sections : stockages et disques physiques (santé, température, usure, heures).
