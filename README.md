@@ -5,7 +5,9 @@
 
 Carte Lovelace pour Home Assistant qui affiche votre infrastructure **Proxmox VE** : nœuds, machines virtuelles (QEMU) et conteneurs (LXC), avec jauges CPU / RAM / disque et boutons d'action.
 
-Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeira/proxmoxve) de dougiteixeira et s'inspire du style des cartes de [juju35](https://github.com/juju35) : JavaScript pur, aucune dépendance (ni Mushroom, ni card-mod, ni button-card), thème clair/sombre automatique.
+Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeira/proxmoxve) de dougiteixeira : JavaScript pur, aucune dépendance (ni Mushroom, ni card-mod, ni button-card), thème clair/sombre automatique.
+
+[![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin) **Ajouter la carte à HACS**
 
 ## Sommaire
 
@@ -36,11 +38,17 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 ## Prérequis
 
 - Home Assistant récent (2024.x ou plus ; la carte lit le registre d'entités et d'appareils exposé au frontend).
-- L'intégration [proxmoxve](https://github.com/dougiteixeira/proxmoxve) installée et configurée (la carte ne fonctionne pas avec l'intégration Proxmox « core » : elle cible la plateforme `proxmoxve`).
+- L'intégration [proxmoxve](https://github.com/dougiteixeira/proxmoxve) installée et configurée ([ajouter dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)) (la carte ne fonctionne pas avec l'intégration Proxmox « core » : elle cible la plateforme `proxmoxve`).
 
 ## Installation
 
 ### Via HACS (dépôt personnalisé)
+
+En un clic (nécessite [My Home Assistant](https://my.home-assistant.io) configuré avec l'adresse de votre instance) :
+
+[![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin)
+
+Ou à la main :
 
 1. HACS → menu ⋮ → **Dépôts personnalisés**.
 2. Ajouter `https://github.com/aubierr/ha-proxmox-card`, type **Tableau de bord** (Dashboard / Lovelace).
@@ -159,7 +167,6 @@ python -m http.server 8765
 ## Remerciements
 
 - [dougiteixeira/proxmoxve](https://github.com/dougiteixeira/proxmoxve) pour l'intégration Proxmox VE.
-- [juju35](https://github.com/juju35) pour l'inspiration visuelle (ha-nas-card, ha-uv-card, ha-switch-card…).
 
 ## Licence
 
