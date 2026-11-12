@@ -1,0 +1,7 @@
+# Python / OS / éditeurs
+__pycache__/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+node_modules/

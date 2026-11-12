@@ -48,7 +48,7 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 
 ### Manuelle
 
-1. Copier [`proxmox-card.js`](proxmox-card.js) dans `/config/www/`.
+1. Copier [`dist/proxmox-card.js`](dist/proxmox-card.js) dans `/config/www/`.
 2. Réglages → Tableaux de bord → ⋮ → **Ressources** → **Ajouter une ressource** :
    - URL : `/local/proxmox-card.js`
    - Type : **Module JavaScript**
@@ -147,7 +147,7 @@ Pour masquer tous les boutons : `show_actions: false`.
 
 ## Développement
 
-Le projet est un unique fichier JavaScript sans étape de build : [`proxmox-card.js`](proxmox-card.js).
+Le projet est un unique fichier JavaScript sans étape de build : [`dist/proxmox-card.js`](dist/proxmox-card.js).
 
 Une page de test avec un faux objet `hass` est fournie dans [`test/`](test/index.html). Les modules ES ne se chargent pas depuis `file://`, il faut donc un petit serveur :
 
