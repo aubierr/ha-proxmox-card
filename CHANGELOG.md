@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+- Réseau entrant et sortant par invité (`show_network`) : débit calculé à partir des compteurs cumulés de l'intégration, affiché sous le nom de chaque invité qui tourne. Le débit apparaît tout de suite grâce à l'historique de Home Assistant.
+- `network_mode` (`rate` pour le débit, `total` pour le volume depuis le démarrage) et `network_unit` (`bytes` ou `bits`), réglables dans l'éditeur ; message d'aide quand les capteurs réseau sont désactivés.
+- Tailles réelles (`show_sizes`) : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités. Les totaux manquants sont déduits des autres valeurs.
+- Pression des invités (`show_pressure`, `thresholds.pressure`) : badge orange ou rouge pour le CPU, la mémoire ou les E/S saturés.
+- Instantanés (`show_snapshots`) : nombre d'instantanés par invité et bouton pour en créer un, avec confirmation.
+- Badge « haute disponibilité » sur les invités gérés par HA, icône « partagé » et grisé « désactivé » sur les stockages, pastille « stockage presque plein » (`thresholds.disk.critical`).
+- Correction : les capteurs « libre en % » (mémoire et disque) ne sont plus confondus avec les capteurs « utilisé en % ».
+- Traductions : nouveaux textes dans les 20 langues.
+
 ## 1.0.1
 
 - Dernière sauvegarde : date et heure complètes avec secondes, dans la langue de l'utilisateur (par exemple « 12 novembre 2026 à 02:18:05 »).

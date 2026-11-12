@@ -47,27 +47,34 @@
   const ent = (device_id, domain, key, state, extra = {}) => {
     const entity_id = `${domain}.${device_id}_${key}`;
     entities[entity_id] = { entity_id, platform: "proxmoxve", device_id, translation_key: key };
-    states[entity_id] = { entity_id, state: String(state), attributes: extra };
+    states[entity_id] = { entity_id, state: String(state), attributes: extra, last_updated: new Date().toISOString() };
   };
   const ago = (days) => new Date(Date.now() - days * 864e5).toISOString();
   // Fictional data, using the real translation keys of the proxmoxve integration
   dev("n1", "Node pve", "Intel(R) Xeon(R) CPU");
   [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 74], ["sensor", "swap_used_perc", 17],
-   ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"],
-   ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v]) => ent("n1", d, k, v));
-  [["sensor", "backup_last", ago(0.3)], ["binary_sensor", "backup_status", "off"]].forEach(([d, k, v]) => ent("n1", d, k, v));
+   ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"], ["sensor", "memory_used", 19.5, { unit_of_measurement: "GB" }], ["sensor", "memory_free", 12.5, { unit_of_measurement: "GB" }],
+   ["sensor", "disk_total", 500, { unit_of_measurement: "GB" }], ["sensor", "disk_used", 370, { unit_of_measurement: "GB" }],
+   ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
+  [["sensor", "backup_last", ago(0.3)], ["binary_sensor", "backup_status", "off"]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
   // a second node and the cluster device (only shown when the cluster has 2 nodes or more)
   dev("n2", "Node srv2", "Intel(R) Core(TM) CPU");
   [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 38], ["sensor", "memory_used_perc", 57], ["sensor", "disk_used_perc", 45], ["sensor", "uptime", ago(3.4)], ["sensor", "version", "9.2.26"],
    ["sensor", "load_1m", 0.9], ["sensor", "io_wait", 0.1]].forEach(([d, k, v]) => ent("n2", d, k, v));
   dev("c1", "Proxmox Cluster", "Cluster");
   [["sensor", "cluster_cpu_used", 31], ["sensor", "cluster_memory_used_perc", 59], ["sensor", "cluster_nodes_online", 2], ["binary_sensor", "quorate", "on"]].forEach(([d, k, v]) => ent("c1", d, k, v));
+  const STOR = { s1: 100e9, s2: 800e9, s3: 4e12, s4: 2e12 };
   for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 52, "on"], ["s3", "data", 88, "on"], ["s4", "backup", 67, "on"]]) {
     dev(id, `Storage pve/${n}`, "Storage", "n1"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
+    const total = STOR[id]; // sizes in GB, like the integration (disabled by default, shown once enabled)
+    ent(id, "sensor", "disk_total", total / 1e9, { unit_of_measurement: "GB" }); ent(id, "sensor", "disk_free", (total * (1 - pct / 100)) / 1e9, { unit_of_measurement: "GB" });
+    ent(id, "binary_sensor", "storage_shared", id === "s4" ? "on" : "off"); ent(id, "binary_sensor", "storage_enabled", "on");
   }
   for (const [id, n, t, w, h, prob] of [["d1", "Samsung SSD 970 EVO 500GB", 38, 5, 12420, "off"], ["d2", "Crucial MX500 1TB", 44, 21, 30210, "off"]]) {
     dev(id, `Disk pve: ${n}`, "SSD", "n1"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
   }
+  const NET = { q1: [45e3, 12e3], q2: [8.4e6, 1.2e6], l1: [2.1e6, 640e3], l2: [3.2e3, 1.1e3], l3: [15e6, 310e3] }; // bytes per second (fictional)
+  const netRates = {};
   const guests = [
     ["q1", "QEMU homeassistant (101)", "QEMU", "running", 4, 62, 36, "192.168.1.20"], ["q2", "QEMU nas (104)", "QEMU", "running", 31, 78, 91, "192.168.1.30"],
     ["q3", "QEMU windows (200)", "QEMU", "stopped", 0, 0, 0, ""], ["l1", "LXC docker (100)", "LXC", "running", 9, 44, 41, "192.168.1.50"],
@@ -77,6 +84,20 @@
     dev(id, name, model, "n1"); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
     ent(id, "sensor", "disk_used_perc", st === "running" ? disk : "unknown"); ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", ago(5.2));
     ent(id, "binary_sensor", "locked", "off");
+    if (st === "running") {
+      const GB = { q1: [4, 32], q2: [16, 2000], l1: [8, 64], l2: [0.5, 8], l3: [8, 500], q4: [8, 120] }[id];
+      ent(id, "sensor", "memory_used", (GB[0] * mem) / 100, { unit_of_measurement: "GB" }); ent(id, "sensor", "memory_free", GB[0] * (1 - mem / 100), { unit_of_measurement: "GB" });
+      ent(id, "sensor", "disk_total", GB[1], { unit_of_measurement: "GB" });
+      const press = { q2: [18, 34, 20], l3: [12, 3, 4] }[id] || [1, 0, 2]; // cpu, io, memory "some" pressure (%)
+      ent(id, "sensor", "pressure_cpu_some", press[0]); ent(id, "sensor", "pressure_io_some", press[1]); ent(id, "sensor", "pressure_memory_some", press[2]);
+    }
+    ent(id, "binary_sensor", "ha_managed", id === "q1" || id === "l1" ? "on" : "off");
+    ent(id, "sensor", "snapshots", { q1: 3, l1: 1, l3: 2 }[id] || 0); ent(id, "button", "snapshot", "unknown");
+    if (st === "running") { // cumulative byte counters, like the integration (shown in MB); the card turns them into a rate
+      const [rin, rout] = NET[id]; const base = 4000 + id.charCodeAt(1) * 111;
+      ent(id, "sensor", "network_in", base + (rin * 1200) / 1e6, { unit_of_measurement: "MB" }); ent(id, "sensor", "network_out", base / 4 + (rout * 1200) / 1e6, { unit_of_measurement: "MB" });
+      netRates[`sensor.${id}_network_in`] = rin; netRates[`sensor.${id}_network_out`] = rout;
+    }
     ent(id, "button", st === "running" ? "shutdown" : "start", "unknown"); if (st === "running") ent(id, "button", "reboot", "unknown");
   }
   window.__hass = { states, entities, devices, language: lang, locale: { language: lang }, callService: (d, s, p) => console.log("service", d, s, p),
@@ -85,6 +106,11 @@
       if (msg.type !== "history/history_during_period") throw new Error("unsupported " + msg.type);
       const end = Date.parse(msg.end_time), start = Date.parse(msg.start_time), out = {};
       for (const id of msg.entity_ids) {
+        if (netRates[id] !== undefined) { // 21 samples, one per minute, ending with the current value
+          const last = Date.parse(states[id].last_updated), mb = Number(states[id].state);
+          out[id] = Array.from({ length: 21 }, (_, i) => ({ lu: (last - (20 - i) * 60e3) / 1000, s: String(mb - (netRates[id] * (20 - i) * 60) / 1e6) }));
+          continue;
+        }
         const base = Number(states[id].state) || 30;
         out[id] = Array.from({ length: 300 }, (_, i) => ({ lu: (start + ((end - start) * i) / 299) / 1000, s: String(Math.max(2, Math.min(98, base + 22 * Math.sin(i / 22 + id.length) + 9 * Math.sin(i / 5)))) }));
       }

@@ -25,6 +25,8 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Historique, sauvegarde et cluster](#historique-sauvegarde-et-cluster)
+- [Tailles, pression et instantanés](#tailles-pression-et-instantanés)
+- [Réseau entrant et sortant](#réseau-entrant-et-sortant)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
@@ -41,6 +43,10 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
 - **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système, l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
+- **Tailles réelles** : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités (affichés, ou au survol).
+- **Pression** : badge orange ou rouge sur un invité dont le CPU, la mémoire ou les E/S sont saturés (indicateurs PSI de Proxmox).
+- **Instantanés** : nombre d'instantanés de chaque invité et bouton pour en créer un (avec confirmation).
+- **Réseau par invité** : débit entrant et sortant (ou total depuis le démarrage) sous le nom de chaque invité qui tourne, en octets ou en bits par seconde.
 - **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type pour regrouper, puis ID / Nom / État ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
 - **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
 - **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`).
@@ -120,6 +126,12 @@ show_cluster: true       # résumé du cluster à partir de 2 nœuds
 show_history: true       # courbes d'historique CPU / RAM des nœuds
 history_hours: 24        # période : 6, 12, 24, 48 ou 72
 show_backup: true        # date de la dernière sauvegarde
+show_network: true       # réseau entrant / sortant de chaque invité
+show_sizes: true         # tailles (libre / total, utilisé / total)
+show_pressure: true      # badge de pression CPU / mémoire / E/S
+show_snapshots: true     # nombre d'instantanés et bouton « créer »
+network_mode: rate       # rate (débit) | total (depuis le démarrage)
+network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
 collapsed: [disks]       # sections repliées par défaut : nodes, guests, storage, disks
 accent: "#1e88e5"         # couleur d'accent (n'importe quelle couleur CSS)
@@ -135,6 +147,7 @@ thresholds:
   temperature: { warning: 55, critical: 70 }
   wear:        { warning: 70, critical: 90 }
   io:          { warning: 5,  critical: 15 }
+  pressure:    { warning: 10, critical: 30 }
 ```
 
 | Option | Type | Défaut | Description |
@@ -164,6 +177,12 @@ thresholds:
 | `show_history` | booléen | `true` | Courbes d'historique CPU et RAM sur les nœuds |
 | `history_hours` | nombre | `24` | Période des courbes en heures : `6`, `12`, `24`, `48` ou `72` |
 | `show_backup` | booléen | `true` | Date de la dernière sauvegarde du nœud (entité « Last backup », désactivée par défaut dans l'intégration) |
+| `show_network` | booléen | `true` | Réseau entrant et sortant sous le nom de chaque invité qui tourne (entités « Réseau descendant / montant », désactivées par défaut) |
+| `network_mode` | texte | `rate` | `rate` : débit par seconde, calculé par la carte ; `total` : volume cumulé depuis le démarrage de l'invité |
+| `network_unit` | texte | `bytes` | Unité du débit : `bytes` (kB/s, MB/s…) ou `bits` (kbit/s, Mbit/s…) |
+| `show_sizes` | booléen | `true` | Tailles réelles : « 660 GB libres / 2,00 TB » sur les stockages, « 19,5 / 32 GB » sous les jauges des nœuds et sous les barres des invités |
+| `show_pressure` | booléen | `true` | Badge de pression (CPU, mémoire ou E/S) sur les invités dont l'indicateur dépasse `thresholds.pressure` |
+| `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
 | `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
 | `collapsed` | liste | *(vide)* | Sections repliées par défaut : `nodes`, `guests`, `storage`, `disks` |
 | `accent` | texte ou RVB | orange Proxmox | Couleur d'accent : couleur CSS (`"#1e88e5"`, `teal`…) ou liste `[r, g, b]` du sélecteur de couleur |
@@ -178,6 +197,28 @@ thresholds:
 - **Courbes d'historique** : la carte interroge l'historique (*recorder*) de Home Assistant pour les entités CPU et RAM de chaque nœud, puis se rafraîchit toutes les 5 minutes. Si l'historique de ces entités est exclu du *recorder*, les courbes n'apparaissent pas ; `show_history: false` les retire.
 - **Dernière sauvegarde** : elle vient de l'entité « Last backup » du nœud, **désactivée par défaut** dans l'intégration (Paramètres → Appareils et services → le nœud → entités désactivées). Activez aussi « Backup status » pour être alerté d'un échec. L'éditeur indique si l'entité est absente.
 - **Cluster** : la tuile s'affiche quand le cluster compte au moins 2 nœuds, à partir des entités de l'appareil « Proxmox Cluster » ; une perte de quorum (entité d'état de haute disponibilité de l'intégration, si elle est configurée) est signalée.
+
+## Tailles, pression et instantanés
+
+Ces informations viennent d'entités que l'intégration **désactive par défaut** (Paramètres → Appareils et services → l'appareil → entités désactivées). L'éditeur indique, sous chaque option, quand elles manquent.
+
+| Information | Entités à activer | Remarques |
+|---|---|---|
+| Espace libre et total d'un **stockage** | « Disque espace total » et « Disque libre » du stockage | Sans elles, seul le pourcentage est affiché. Les stockages partagés reçoivent une icône, et un stockage désactivé dans Proxmox est grisé |
+| Mémoire et disque d'un **nœud ou d'un invité** | « Mémoire utilisée » + « Mémoire libre » (ou « Mémoire totale »), « Disque espace total » | Le total manquant est déduit des autres valeurs |
+| **Pression** d'un invité | « CPU pressure », « IO pressure », « Memory pressure » | Proxmox 9 ou plus. C'est la part du temps où des tâches ont attendu le CPU, les E/S ou la mémoire : un invité peut être saturé avec un CPU à 20 % |
+| **Instantanés** | « Snapshots » (nombre) et « Create snapshot » (bouton) | Le bouton demande une confirmation et dépend de `show_actions` |
+
+Un badge **bouclier** sur un invité indique qu'il est géré par la haute disponibilité (« HA managed »). Une pastille rouge « stockage presque plein » apparaît en haut de la carte quand un stockage dépasse `thresholds.disk.critical` (90 % par défaut).
+
+## Réseau entrant et sortant
+
+L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau descendant »** (reçu) et **« Réseau montant »** (envoyé). Ils sont **désactivés par défaut** (Paramètres → Appareils et services → l'invité → entités désactivées) et ce sont des **compteurs cumulés** d'octets, pas des débits.
+
+- En mode `rate` (par défaut), la carte calcule le débit entre deux mesures successives. Au chargement, elle lit les dernières mesures dans l'historique de Home Assistant pour afficher un débit tout de suite ; sans historique, le débit apparaît après deux relevés de l'intégration. Une remise à zéro du compteur (redémarrage de l'invité) affiche « – » une fois.
+- En mode `total`, elle affiche le volume cumulé depuis le démarrage de l'invité (par exemple « 12,0 GB »).
+- `network_unit: bits` convertit les débits en bits par seconde (utile pour comparer à un débit de box ou de lien).
+- La ligne n'apparaît que pour les invités qui tournent et dont les capteurs sont activés ; l'éditeur indique quand aucun invité n'en a. `show_network: false` la retire.
 
 ## Filtrer et renommer les invités
 
@@ -209,6 +250,7 @@ guests:
 | `temperature` (disques physiques) | 55 °C | 70 °C |
 | `wear` (usure des disques) | 70 % | 90 % |
 | `io` (IO delay des nœuds) | 5 % | 15 % |
+| `pressure` (pression des invités, en %) | 10 % | 30 % |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
 
