@@ -45,26 +45,27 @@ ha-card { height:100%; overflow:hidden; container-type:inline-size; padding:12px
 .bar > i { display:block; height:100%; border-radius:3px; background:var(--px-ok); transition:width .6s ease, background .3s; }
 .bar > i.warn { background:var(--px-warn); } .bar > i.crit { background:var(--px-crit); }
 .guests { display:flex; flex-direction:column; gap:2px; overflow:auto; }
-.g { display:grid; grid-template-columns:28px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) auto; align-items:center; gap:10px; padding:6px 4px; border-radius:8px; cursor:pointer; }
+.g { display:grid; grid-template-columns:28px minmax(0,1.2fr) minmax(0,2.4fr) auto; align-items:center; gap:10px; padding:6px 4px; border-radius:8px; cursor:pointer; }
 .g:hover { background:color-mix(in srgb,var(--primary-text-color) 6%,transparent); }
 .g.off { opacity:.55; }
 .gi { position:relative; color:var(--secondary-text-color); display:grid; place-items:center; }
 .gi .dot { position:absolute; right:-2px; bottom:-1px; width:8px; height:8px; border:2px solid var(--card-background-color,#fff); box-sizing:content-box; }
 .gn { min-width:0; } .gn div:first-child { font-size:14px; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gn div:last-child { font-size:11px; color:var(--secondary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gm { display:grid; grid-template-columns:1fr 34px; align-items:center; gap:6px; font-size:11px; color:var(--secondary-text-color); }
-.gm b { text-align:right; font-weight:500; color:var(--primary-text-color); }
+.gms { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; min-width:0; }
+.gm { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--secondary-text-color); min-width:0; }
+.gl { display:flex; justify-content:space-between; gap:4px; }
+.gl b { font-weight:500; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
 .acts { display:flex; gap:2px; }
 .act { --mdc-icon-size:20px; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; cursor:pointer; color:var(--secondary-text-color); border:0; background:none; padding:0; }
 .act:hover { background:color-mix(in srgb,var(--px-accent) 18%,transparent); color:var(--px-accent); }
 .act.armed { background:var(--px-crit); color:#fff; }
 .empty { padding:16px; text-align:center; color:var(--secondary-text-color); }
 @container (max-width:520px) {
-  .g { grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) auto; } .g .gm.ram { display:none; }
+  .g { grid-template-columns:28px minmax(0,1fr) auto; row-gap:6px; } .g .gms { grid-column:2 / -1; grid-row:2; }
 }
 @container (max-width:340px) {
-  .badge { display:none; } .chips { display:none; }
-  .g { grid-template-columns:28px minmax(0,1fr) auto; } .g .gm { display:none; }
+  .badge { display:none; } .chips { display:none; } .g .gms { gap:6px; }
 }
 @media (prefers-reduced-motion:reduce) { .bar > i { transition:none; } }
 `;
@@ -104,10 +105,10 @@ function roleOf(ent) {
   if (domain === "sensor" || domain === "binary_sensor") {
     if (/status/.test(k) && !/storage/.test(k)) return "status";
     if (/cpu_used|(^|_)cpu(_|\s|$)/.test(k) && !/cpus/.test(k)) return "cpu";
-    if (/memory.*(percent|usage)|mem.*percent/.test(k)) return "mem_pct";
+    if (/memory.*(perc|usage)|mem.*perc/.test(k)) return "mem_pct";
     if (/memory_total|mem_total/.test(k)) return "mem_total";
     if (/memory_used|mem_used|(^|_)memory(_|\s|$)/.test(k)) return "mem_used";
-    if (/disk.*(percent|usage)|disk_used_percentage/.test(k)) return "disk_pct";
+    if (/disk.*(perc|usage)/.test(k)) return "disk_pct";
     if (/disk_total/.test(k)) return "disk_total";
     if (/disk_used|(^|_)disk(_|\s|$)/.test(k)) return "disk_used";
     if (/uptime/.test(k)) return "uptime";
@@ -238,8 +239,8 @@ export class ProxmoxCard extends HTMLElement {
     const l = level(v, thr);
     return `<div class="metric"><span>${label}</span><div class="bar"><i class="${l}" style="width:${v ?? 0}%"></i></div><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>`;
   }
-  _mini(cls, v, thr) {
-    return `<div class="gm ${cls}"><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>`;
+  _mini(label, v, thr) {
+    return `<div class="gm"><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div></div>`;
   }
 
   _render() {
@@ -295,8 +296,11 @@ export class ProxmoxCard extends HTMLElement {
           return `<div class="g ${on ? "" : "off"}" data-more="${esc((g.roles.status || g.roles.cpu).entity_id)}">
             <div class="gi"><ha-icon icon="${g.kind === "lxc" ? ICON.ct : ICON.vm}"></ha-icon><span class="dot ${on ? "on" : s === "off" ? "off" : ""}"></span></div>
             <div class="gn"><div>${esc(g.name)}</div><div>${esc(sub)}</div></div>
-            ${this._mini("cpu", on ? this._pct(g, "cpu") : null, T.cpu)}
-            ${this._mini("ram", on ? this._pct(g, "mem") : null, T.memory)}
+            <div class="gms">
+              ${this._mini(this._t("cpu"), on ? this._pct(g, "cpu") : null, T.cpu)}
+              ${this._mini(this._t("ram"), on ? this._pct(g, "mem") : null, T.memory)}
+              ${this._mini(this._t("disk"), on ? this._pct(g, "disk") : null, T.disk)}
+            </div>
             <div class="acts">${acts}</div></div>`;
         }).join("") + `</div>`;
       }
