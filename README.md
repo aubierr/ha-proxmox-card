@@ -24,6 +24,7 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Historique, sauvegarde et cluster](#historique-sauvegarde-et-cluster)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
@@ -36,10 +37,14 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 
 - **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve`.
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
+- **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
-- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, puis une bande bien visible avec la charge système et l'IO delay (orange / rouge selon `thresholds.io`) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système, l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
 - **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type pour regrouper, puis ID / Nom / État ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
+- **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
+- **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`).
+- **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison.
 - **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
@@ -111,6 +116,13 @@ sort: id                 # id | name | status
 sort_dir: asc            # asc | desc
 group_by_type: false     # true = VM puis LXC (ou l'inverse avec type_order)
 type_order: vm_first     # vm_first | lxc_first
+show_cluster: true       # résumé du cluster à partir de 2 nœuds
+show_history: true       # courbes d'historique CPU / RAM des nœuds
+history_hours: 24        # période : 6, 12, 24, 48 ou 72
+show_backup: true        # date de la dernière sauvegarde
+guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
+collapsed: [disks]       # sections repliées par défaut : nodes, guests, storage, disks
+accent: "#1e88e5"         # couleur d'accent (n'importe quelle couleur CSS)
 exclude: [openwrt, "120"]   # masquer ces invités (ID ou nom)
 # include: [100, docker]    # ou n'afficher que ceux-là
 guests:                     # nom et icône personnalisés (clé = ID ou nom)
@@ -148,11 +160,24 @@ thresholds:
 | `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
 | `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
 | `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
+| `show_cluster` | booléen | `true` | Tuile de résumé du cluster (affichée à partir de 2 nœuds) |
+| `show_history` | booléen | `true` | Courbes d'historique CPU et RAM sur les nœuds |
+| `history_hours` | nombre | `24` | Période des courbes en heures : `6`, `12`, `24`, `48` ou `72` |
+| `show_backup` | booléen | `true` | Date de la dernière sauvegarde du nœud (entité « Last backup », désactivée par défaut dans l'intégration) |
+| `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
+| `collapsed` | liste | *(vide)* | Sections repliées par défaut : `nodes`, `guests`, `storage`, `disks` |
+| `accent` | texte ou RVB | orange Proxmox | Couleur d'accent : couleur CSS (`"#1e88e5"`, `teal`…) ou liste `[r, g, b]` du sélecteur de couleur |
 | `include` | liste | *(vide)* | N'afficher que ces invités (ID ou nom). Vide = tous |
 | `exclude` | liste | *(vide)* | Masquer ces invités (ID ou nom) |
 | `guests` | objet | *(vide)* | Nom (`name`) et icône (`icon`) personnalisés par invité, voir ci-dessous (YAML uniquement) |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
 | `language` | texte | `auto` | `auto` (langue de Home Assistant) ou un code : `en`, `fr`, `de`, `es`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `nb`, `fi`, `ru`, `uk`, `tr`, `ro`, `hu`, `ja`, `zh` |
+
+## Historique, sauvegarde et cluster
+
+- **Courbes d'historique** : la carte interroge l'historique (*recorder*) de Home Assistant pour les entités CPU et RAM de chaque nœud, puis se rafraîchit toutes les 5 minutes. Si l'historique de ces entités est exclu du *recorder*, les courbes n'apparaissent pas ; `show_history: false` les retire.
+- **Dernière sauvegarde** : elle vient de l'entité « Last backup » du nœud, **désactivée par défaut** dans l'intégration (Paramètres → Appareils et services → le nœud → entités désactivées). Activez aussi « Backup status » pour être alerté d'un échec. L'éditeur indique si l'entité est absente.
+- **Cluster** : la tuile s'affiche quand le cluster compte au moins 2 nœuds, à partir des entités de l'appareil « Proxmox Cluster » ; une perte de quorum (entité d'état de haute disponibilité de l'intégration, si elle est configurée) est signalée.
 
 ## Filtrer et renommer les invités
 

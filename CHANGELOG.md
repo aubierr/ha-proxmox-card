@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+- Courbes d'historique CPU et RAM sur les nœuds (`show_history`, `history_hours`), lues dans l'historique de Home Assistant.
+- Dernière sauvegarde du nœud (`show_backup`) et alerte « sauvegarde en échec ».
+- Résumé du cluster à partir de 2 nœuds (`show_cluster`), avec alerte de perte de quorum.
+- Sections repliables d'un clic, état mémorisé dans le navigateur (`collapsed` pour l'état par défaut).
+- Invités et disques sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`) ; section « Disposition » dans l'éditeur.
+- Performances : la carte n'est recalculée que lorsqu'une entité qu'elle affiche change.
+- Correction : les attributs des éléments personnalisés (icônes) ne sont plus supprimés lors des mises à jour sur place.
+- Éditeur : nouveaux libellés et messages d'aide dans les 20 langues.
+
 ## 0.6.0
 
 - Filtres : `include` et `exclude` (ID ou nom) pour afficher ou masquer des invités, compteurs et tri compris ; option `guests` pour renommer un invité et changer son icône. Section « Filtres » dans l'éditeur.

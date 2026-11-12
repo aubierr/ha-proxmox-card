@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>proxmox-card test</title>
 <!--
   Page de test avec un faux objet `hass` (données fictives).
-  Paramètres : ?lang=fr|en|de…  ?theme=dark  ?w=420 (largeur de la carte en px)  ?single=1 (une seule carte)  ?shot=1 (sans bouton, pour les captures)
+  Paramètres : ?lang=fr|en|de…  ?theme=dark  ?w=420 (largeur de la carte en px)  ?single=1 (une seule carte)  ?shot=1 (sans bouton, pour les captures)  ?cfg={"node":"pve"} (configuration JSON ajoutée à la carte)
   Les icônes MDI sont chargées depuis jsDelivr (il faut une connexion Internet).
 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
@@ -43,7 +43,7 @@
   const lang = q.get("lang") || "fr";
 
   const states = {}, entities = {}, devices = {};
-  const dev = (id, name, model) => (devices[id] = { id, name, model });
+  const dev = (id, name, model, via) => (devices[id] = { id, name, model, via_device_id: via });
   const ent = (device_id, domain, key, state, extra = {}) => {
     const entity_id = `${domain}.${device_id}_${key}`;
     entities[entity_id] = { entity_id, platform: "proxmoxve", device_id, translation_key: key };
@@ -55,11 +55,18 @@
   [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 74], ["sensor", "swap_used_perc", 17],
    ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"],
    ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v]) => ent("n1", d, k, v));
+  [["sensor", "backup_last", ago(0.3)], ["binary_sensor", "backup_status", "off"]].forEach(([d, k, v]) => ent("n1", d, k, v));
+  // a second node and the cluster device (only shown when the cluster has 2 nodes or more)
+  dev("n2", "Node srv2", "Intel(R) Core(TM) CPU");
+  [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 38], ["sensor", "memory_used_perc", 57], ["sensor", "disk_used_perc", 45], ["sensor", "uptime", ago(3.4)], ["sensor", "version", "9.2.26"],
+   ["sensor", "load_1m", 0.9], ["sensor", "io_wait", 0.1]].forEach(([d, k, v]) => ent("n2", d, k, v));
+  dev("c1", "Proxmox Cluster", "Cluster");
+  [["sensor", "cluster_cpu_used", 31], ["sensor", "cluster_memory_used_perc", 59], ["sensor", "cluster_nodes_online", 2], ["binary_sensor", "quorate", "on"]].forEach(([d, k, v]) => ent("c1", d, k, v));
   for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 52, "on"], ["s3", "data", 88, "on"], ["s4", "backup", 67, "on"]]) {
-    dev(id, `Storage pve/${n}`, "Storage"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
+    dev(id, `Storage pve/${n}`, "Storage", "n1"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
   }
   for (const [id, n, t, w, h, prob] of [["d1", "Samsung SSD 970 EVO 500GB", 38, 5, 12420, "off"], ["d2", "Crucial MX500 1TB", 44, 21, 30210, "off"]]) {
-    dev(id, `Disk pve: ${n}`, "SSD"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
+    dev(id, `Disk pve: ${n}`, "SSD", "n1"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
   }
   const guests = [
     ["q1", "QEMU homeassistant (101)", "QEMU", "running", 4, 62, 36, "192.168.1.20"], ["q2", "QEMU nas (104)", "QEMU", "running", 31, 78, 91, "192.168.1.30"],
@@ -67,15 +74,26 @@
     ["l2", "LXC pihole (102)", "LXC", "running", 1, 12, 23, "192.168.1.53"], ["l3", "LXC immich (103)", "LXC", "running", 6, 71, 58, "192.168.1.54"],
   ];
   for (const [id, name, model, st, cpu, mem, disk, ip] of guests) {
-    dev(id, name, model); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
+    dev(id, name, model, "n1"); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
     ent(id, "sensor", "disk_used_perc", st === "running" ? disk : "unknown"); ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", ago(5.2));
     ent(id, "binary_sensor", "locked", "off");
     ent(id, "button", st === "running" ? "shutdown" : "start", "unknown"); if (st === "running") ent(id, "button", "reboot", "unknown");
   }
-  window.__hass = { states, entities, devices, language: lang, locale: { language: lang }, callService: (d, s, p) => console.log("service", d, s, p) };
+  window.__hass = { states, entities, devices, language: lang, locale: { language: lang }, callService: (d, s, p) => console.log("service", d, s, p),
+    // fake recorder: smooth random-looking curves around the current value
+    callWS: async (msg) => {
+      if (msg.type !== "history/history_during_period") throw new Error("unsupported " + msg.type);
+      const end = Date.parse(msg.end_time), start = Date.parse(msg.start_time), out = {};
+      for (const id of msg.entity_ids) {
+        const base = Number(states[id].state) || 30;
+        out[id] = Array.from({ length: 300 }, (_, i) => ({ lu: (start + ((end - start) * i) / 299) / 1000, s: String(Math.max(2, Math.min(98, base + 22 * Math.sin(i / 22 + id.length) + 9 * Math.sin(i / 5)))) }));
+      }
+      return out;
+    } };
   document.addEventListener("hass-more-info", (e) => console.log("more-info", e.detail));
   const narrow = { show_disks: false, show_swap: false, show_load: false, show_version: false, show_uptime: false, show_badges: false, show_alerts: false };
-  for (const [sel, cfg] of [["a", { title: "Proxmox" }], ["b", { title: "Proxmox", ...narrow }]]) {
+  const extra = q.get("cfg") ? JSON.parse(q.get("cfg")) : {}; // e.g. ?cfg={"node":"pve","accent":"#1e88e5"}
+  for (const [sel, cfg] of [["a", { title: "Proxmox", ...extra }], ["b", { title: "Proxmox", ...narrow }]]) {
     if (!document.getElementById(sel)) continue;
     const c = new ProxmoxCard(); c.setConfig(cfg); c.hass = window.__hass; document.getElementById(sel).append(c);
   }
