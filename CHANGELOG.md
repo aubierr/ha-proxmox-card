@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+- La ligne « Dernière sauvegarde » est centrée sous la charge et l'IO delay, comme eux.
+- Workflow GitHub : actions mises à jour (`actions/checkout` v7, `actions/setup-node` v7, Node 26) et runner `ubuntu-24.04`, ce qui supprime les avertissements de dépréciation.
+
 ## 0.7.0
 
 - Courbes d'historique CPU et RAM sur les nœuds (`show_history`, `history_hours`), lues dans l'historique de Home Assistant.

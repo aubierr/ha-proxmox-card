@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.7.0";
+const VERSION = "0.7.1";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -154,7 +154,7 @@ ha-card > * { position:relative; }
   .guests.cols-auto .g { grid-template-columns:40px minmax(0,1fr) auto; row-gap:8px; } .guests.cols-auto .g .gms { grid-column:1 / -1; grid-row:2; }
   .dks.cols-auto .dk { grid-template-columns:14px minmax(0,1fr) auto minmax(0,1fr); } .dks.cols-auto .dk .hr { display:none; }
 }
-.strip .si.wide { grid-column:1 / -1; justify-content:flex-start; border-left:0; border-top:1px solid var(--px-line); margin-top:12px; padding-top:12px; }
+.strip .si.wide { grid-column:1 / -1; justify-content:center; border-left:0; border-top:1px solid var(--px-line); margin-top:12px; padding-top:12px; }
 .strip .si.wide b { font-size:15px; }
 .hist { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
 .sp { --c:var(--px-ok); display:flex; flex-direction:column; gap:4px; min-width:0; }
