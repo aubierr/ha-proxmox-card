@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Traduction complète de la carte et de l'éditeur en 20 langues : anglais, français, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais et chinois. La langue suit celle de Home Assistant (`language: auto`) ou se choisit avec `language`.
+- Sens du tri : « croissant » = du haut vers le bas (flèche ↓ sur le bouton et dans l'éditeur), « décroissant » = du bas vers le haut (flèche ↑).
+- Correction mobile : la page remontait toute seule. La carte reconstruisait tout son contenu à chaque changement d'état de Home Assistant (identifiants SVG des jauges différents à chaque rendu) ; elle ne le fait plus que lorsqu'une valeur affichée change.
+- Éditeur : il ne se réinitialise plus à chaque changement d'état de Home Assistant (même cause du saut de page sur mobile).
+- Éditeur : libellés des listes (sens, critère, ordre des types) traduits dans la langue choisie au lieu de « Ascending / Croissant ».
+
 ## 0.4.1
 
 - Tri des invités réglable dans la configuration : `sort` (`id`, `name`, `status`), `sort_dir` (`asc`, `desc`), `group_by_type` et `type_order` (`vm_first`, `lxc_first`). Section « Tri des invités » dans l'éditeur.

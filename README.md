@@ -36,7 +36,7 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
 - **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
 - **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
-- **Éditeur visuel** intégré, interface en **français** et **anglais** (détection automatique).
+- **Éditeur visuel** intégré et interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
 - Respecte `prefers-reduced-motion`.
 
 ## Prérequis
@@ -130,11 +130,11 @@ thresholds:
 | `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds |
 | `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
 | `sort` | texte | `id` | Critère de tri des invités : `id`, `name` ou `status` (actifs d'abord) |
-| `sort_dir` | texte | `asc` | Sens du tri : `asc` ou `desc` |
+| `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
 | `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
 | `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
-| `language` | texte | `auto` | `auto`, `en` ou `fr` |
+| `language` | texte | `auto` | `auto` (langue de Home Assistant) ou un code : `en`, `fr`, `de`, `es`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `nb`, `fi`, `ru`, `uk`, `tr`, `ro`, `hu`, `ja`, `zh` |
 
 ## Seuils des jauges
 
