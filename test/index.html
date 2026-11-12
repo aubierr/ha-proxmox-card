@@ -1,19 +1,47 @@
 <!doctype html>
-<meta charset="utf-8"><title>proxmox-card test</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>proxmox-card test</title>
+<!--
+  Page de test avec un faux objet `hass` (données fictives).
+  Paramètres : ?lang=fr|en|de…  ?theme=dark  ?w=420 (largeur de la carte en px)  ?single=1 (une seule carte)  ?shot=1 (sans bouton, pour les captures)
+  Les icônes MDI sont chargées depuis jsDelivr (il faut une connexion Internet).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <style>
-  :root { --primary-text-color:#212121; --secondary-text-color:#727272; --card-background-color:#fff; --secondary-background-color:#f3f3f3; --success-color:#43a047; --warning-color:#ffa600; --error-color:#db4437; --disabled-text-color:#9e9e9e; }
-  body.dark { --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --card-background-color:#1c1c1c; --secondary-background-color:#2a2a2a; background:#111; }
-  body { font-family:Roboto,sans-serif; margin:16px; background:#e9e9e9; }
-  body.dark { background:#111; }
-  ha-card { background:var(--card-background-color); border-radius:12px; display:block; box-shadow:0 1px 3px rgba(0,0,0,.2); }
-  ha-icon { display:inline-block; width:24px; height:24px; text-align:center; font-size:10px; }
-  .wrap { max-width:760px; } .narrow { max-width:320px; margin-top:16px; }
+  :root { --primary-text-color:#212121; --secondary-text-color:#727272; --card-background-color:#fff; --secondary-background-color:#f1f3f4; --success-color:#43a047; --warning-color:#ffa600; --error-color:#db4437; --disabled-text-color:#9e9e9e; }
+  body.dark { --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --card-background-color:#1c1c1c; --secondary-background-color:#2b2b2b; background:#111; }
+  body { font-family:Roboto,sans-serif; margin:0; padding:20px; background:#eceff1; }
+  ha-card { background:var(--card-background-color); border-radius:12px; display:block; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+  .wrap { max-width:760px; margin:0 auto; } .narrow { max-width:340px; margin:16px auto 0; }
+  .tools { position:fixed; top:4px; right:4px; opacity:.4; }
 </style>
 <body>
-<button onclick="document.body.classList.toggle('dark')">dark</button>
+<div class="tools"><button onclick="document.body.classList.toggle('dark')">dark</button></div>
 <div class="wrap" id="a"></div><div class="narrow" id="b"></div>
+<script>
+  // Minimal <ha-icon> stand-in: draws real Material Design Icons (the same set Home Assistant uses).
+  const mdiCache = new Map();
+  customElements.define("ha-icon", class extends HTMLElement {
+    static get observedAttributes() { return ["icon"]; }
+    connectedCallback() { this.style.cssText = "display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px)"; this._draw(); }
+    attributeChangedCallback() { this._draw(); }
+    async _draw() {
+      const name = (this.getAttribute("icon") || "").replace("mdi:", "");
+      if (!name) return;
+      if (!mdiCache.has(name)) mdiCache.set(name, fetch(`https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/${name}.svg`).then((r) => r.text()).then((t) => (t.match(/ d="([^"]+)"/) || [])[1] || "").catch(() => ""));
+      const d = await mdiCache.get(name);
+      if (d && this.getAttribute("icon") === "mdi:" + name) this.innerHTML = `<svg viewBox="0 0 24 24" width="100%" height="100%"><path fill="currentColor" d="${d}"/></svg>`;
+    }
+  });
+</script>
 <script type="module">
   import { ProxmoxCard } from "../dist/proxmox-card.js";
+  const q = new URLSearchParams(location.search);
+  if (q.get("theme") === "dark") document.body.classList.add("dark");
+  if (q.get("w")) document.querySelector(".wrap").style.maxWidth = q.get("w") + "px";
+  if (q.get("single")) document.getElementById("b").remove();
+  if (q.get("shot")) document.querySelector(".tools").remove();
+  const lang = q.get("lang") || "fr";
+
   const states = {}, entities = {}, devices = {};
   const dev = (id, name, model) => (devices[id] = { id, name, model });
   const ent = (device_id, domain, key, state, extra = {}) => {
@@ -21,32 +49,34 @@
     entities[entity_id] = { entity_id, platform: "proxmoxve", device_id, translation_key: key };
     states[entity_id] = { entity_id, state: String(state), attributes: extra };
   };
-  // Données calquées sur les clés de traduction réelles de l'intégration proxmoxve
+  const ago = (days) => new Date(Date.now() - days * 864e5).toISOString();
+  // Fictional data, using the real translation keys of the proxmoxve integration
   dev("n1", "Node pve", "Intel(R) Xeon(R) CPU");
-  [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 84], ["sensor", "swap_used_perc", 17],
-   ["sensor", "uptime", new Date(Date.now() - 6.1 * 864e5).toISOString()], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.02], ["sensor", "version", "9.2.26"],
-   ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 12], ["binary_sensor", "backup_running", "on"], ["sensor", "failed_tasks_count", 2]].forEach(([d, k, v]) => ent("n1", d, k, v));
-  dev("n2", "Node pve2", "Intel(R) Xeon(R) CPU"); ent("n2", "binary_sensor", "status", "off");
-  for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 70, "on"], ["s3", "Donnees_SSD0", 93, "on"], ["s4", "Backup_SSD1", 67, "off"]]) {
+  [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 74], ["sensor", "swap_used_perc", 17],
+   ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"],
+   ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v]) => ent("n1", d, k, v));
+  for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 52, "on"], ["s3", "data", 88, "on"], ["s4", "backup", 67, "on"]]) {
     dev(id, `Storage pve/${n}`, "Storage"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
   }
-  for (const [id, n, t, w, h, prob] of [["d1", "WDC PC SN730 SDBQNTY-256G-1001", 25, 5, 45525, "off"], ["d2", "MTFDDAK480TDS-1AW1ZA", 58, 78, 30210, "off"], ["d3", "SSDSC2KB480G8L", 71, 95, 61004, "on"]]) {
+  for (const [id, n, t, w, h, prob] of [["d1", "Samsung SSD 970 EVO 500GB", 38, 5, 12420, "off"], ["d2", "Crucial MX500 1TB", 44, 21, 30210, "off"]]) {
     dev(id, `Disk pve: ${n}`, "SSD"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
   }
-  const guests = [["q1", "QEMU homeassistant (101)", "QEMU", "running", 12, 78, "192.168.1.20"], ["q2", "QEMU docmost (109)", "QEMU", "stopped", 0, 0, ""], ["q3", "QEMU nas (104)", "QEMU", "running", 95, 91, "192.168.1.30"],
-    ["l1", "LXC CT516 (516)", "LXC", "running", 4, 33, "192.168.1.51"], ["l2", "LXC docker (100)", "LXC", "running", 2, 40, "192.168.1.52"], ["q4", "QEMU win (200)", "QEMU", "running", 30, 60, "192.168.1.53"]];
-  for (const [id, name, model, st, cpu, mem, ip] of guests) {
-    dev(id, name, model); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem); ent(id, "sensor", "disk_used_perc", st === "running" ? 30 + cpu : "unknown");
-    ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", new Date(Date.now() - 3.2 * 864e5).toISOString());
-    ent(id, "binary_sensor", "locked", id === "l1" ? "on" : "off");
-    if (id === "q3") { ent(id, "binary_sensor", "guest_agent", "off"); ent(id, "binary_sensor", "health", "on"); }
+  const guests = [
+    ["q1", "QEMU homeassistant (101)", "QEMU", "running", 4, 62, 36, "192.168.1.20"], ["q2", "QEMU nas (104)", "QEMU", "running", 31, 78, 91, "192.168.1.30"],
+    ["q3", "QEMU windows (200)", "QEMU", "stopped", 0, 0, 0, ""], ["l1", "LXC docker (100)", "LXC", "running", 9, 44, 41, "192.168.1.50"],
+    ["l2", "LXC pihole (102)", "LXC", "running", 1, 12, 23, "192.168.1.53"], ["l3", "LXC immich (103)", "LXC", "running", 6, 71, 58, "192.168.1.54"],
+  ];
+  for (const [id, name, model, st, cpu, mem, disk, ip] of guests) {
+    dev(id, name, model); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
+    ent(id, "sensor", "disk_used_perc", st === "running" ? disk : "unknown"); ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", ago(5.2));
+    ent(id, "binary_sensor", "locked", "off");
     ent(id, "button", st === "running" ? "shutdown" : "start", "unknown"); if (st === "running") ent(id, "button", "reboot", "unknown");
   }
-  const hass = { states, entities, devices, language: "fr", locale: { language: "fr" },
-    callService: (d, s, p) => console.log("service", d, s, p) };
-  window.__hass = hass;
+  window.__hass = { states, entities, devices, language: lang, locale: { language: lang }, callService: (d, s, p) => console.log("service", d, s, p) };
   document.addEventListener("hass-more-info", (e) => console.log("more-info", e.detail));
-  for (const [sel, cfg] of [["a", { title: "Proxmox" }], ["b", { title: "Proxmox", show_disks: false, show_swap: false, show_load: false, show_version: false, show_uptime: false, show_badges: false, show_alerts: false }]]) {
-    const c = new ProxmoxCard(); c.setConfig(cfg); c.hass = hass; document.getElementById(sel).append(c);
+  const narrow = { show_disks: false, show_swap: false, show_load: false, show_version: false, show_uptime: false, show_badges: false, show_alerts: false };
+  for (const [sel, cfg] of [["a", { title: "Proxmox" }], ["b", { title: "Proxmox", ...narrow }]]) {
+    if (!document.getElementById(sel)) continue;
+    const c = new ProxmoxCard(); c.setConfig(cfg); c.hass = window.__hass; document.getElementById(sel).append(c);
   }
 </script>

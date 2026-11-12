@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+- Filtres : `include` et `exclude` (ID ou nom) pour afficher ou masquer des invités, compteurs et tri compris ; option `guests` pour renommer un invité et changer son icône. Section « Filtres » dans l'éditeur.
+- Éditeur : messages d'aide sous les options (combien d'invités ont des boutons marche / arrêt et que faire s'il n'y en a aucun, nombre de stockages et de disques détectés), traduits dans les 20 langues.
+- Invités : la ligne de détail (ID, type, IP, uptime) n'est plus tronquée sur les cartes larges ; les jauges passent sous le nom jusqu'à 640 px de largeur.
+- Mode masonry : `getCardSize` renvoie la hauteur réelle de la carte.
+- Projet : captures d'écran dans le README, page de test avec vraies icônes et paramètres d'URL, workflow GitHub de validation (HACS, syntaxe JavaScript, traductions), modèle d'issue avec script de diagnostic.
+
 ## 0.5.1
 
 - Mobile : la carte ne remplace plus tout son contenu quand une valeur change, elle ne met à jour que les éléments modifiés (les éléments, icônes et boutons restent en place). Cela supprime la dernière cause connue du saut de page, et les jauges s'animent maintenant d'une valeur à l'autre.

@@ -2,6 +2,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Validate](https://github.com/aubierr/ha-proxmox-card/actions/workflows/validate.yml/badge.svg)](https://github.com/aubierr/ha-proxmox-card/actions/workflows/validate.yml)
 
 Carte Lovelace pour Home Assistant qui affiche votre infrastructure **Proxmox VE** : nœuds, machines virtuelles (QEMU) et conteneurs (LXC), avec jauges CPU / RAM / disque et boutons d'action.
 
@@ -9,12 +10,21 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 
 [![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin) **Ajouter la carte à HACS**
 
+<p align="center">
+  <img src="docs/screenshots/card-light.png" width="48%" alt="Carte Proxmox, thème clair">
+  <img src="docs/screenshots/card-dark.png" width="48%" alt="Carte Proxmox, thème sombre">
+</p>
+<p align="center">
+  <img src="docs/screenshots/card-mobile.png" width="300" alt="Carte Proxmox sur un écran étroit (téléphone), en français">
+</p>
+
 ## Sommaire
 
 - [Fonctionnalités](#fonctionnalités)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
 - [Boutons d'action](#boutons-daction)
@@ -30,13 +40,14 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, puis une bande bien visible avec la charge système et l'IO delay (orange / rouge selon `thresholds.io`) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
 - **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type pour regrouper, puis ID / Nom / État ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
+- **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
 - **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
 - **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
-- **Éditeur visuel** intégré et interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
+- **Éditeur visuel** intégré, avec des messages d'aide (combien d'invités ont des boutons, combien de stockages et de disques sont détectés) ; l'éditeur et l'interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
 - Respecte `prefers-reduced-motion`.
 
 ## Prérequis
@@ -100,6 +111,10 @@ sort: id                 # id | name | status
 sort_dir: asc            # asc | desc
 group_by_type: false     # true = VM puis LXC (ou l'inverse avec type_order)
 type_order: vm_first     # vm_first | lxc_first
+exclude: [openwrt, "120"]   # masquer ces invités (ID ou nom)
+# include: [100, docker]    # ou n'afficher que ceux-là
+guests:                     # nom et icône personnalisés (clé = ID ou nom)
+  "104": { name: Routeur, icon: mdi:router-wireless }
 language: fr
 thresholds:
   cpu:         { warning: 60, critical: 85 }
@@ -133,8 +148,31 @@ thresholds:
 | `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
 | `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
 | `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
+| `include` | liste | *(vide)* | N'afficher que ces invités (ID ou nom). Vide = tous |
+| `exclude` | liste | *(vide)* | Masquer ces invités (ID ou nom) |
+| `guests` | objet | *(vide)* | Nom (`name`) et icône (`icon`) personnalisés par invité, voir ci-dessous (YAML uniquement) |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
 | `language` | texte | `auto` | `auto` (langue de Home Assistant) ou un code : `en`, `fr`, `de`, `es`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `nb`, `fi`, `ru`, `uk`, `tr`, `ro`, `hu`, `ja`, `zh` |
+
+## Filtrer et renommer les invités
+
+```yaml
+type: custom:proxmox-card
+exclude:
+  - openwrt        # par nom (ou une partie du nom)
+  - "120"          # par ID
+guests:
+  "104":           # clé = ID ou nom exact
+    name: Routeur
+    icon: mdi:router-wireless
+  docker:
+    icon: mdi:docker
+```
+
+- Une entrée **numérique** correspond à l'ID exact ; une entrée **texte** correspond au nom exact, ou à une partie du nom (sans tenir compte de la casse).
+- `include` et `exclude` s'appliquent partout : liste, compteurs de l'en-tête et tri. Si les deux sont renseignés, `exclude` l'emporte.
+- `include` et `exclude` se règlent aussi dans l'éditeur visuel (section « Filtres »). Le renommage et les icônes (`guests`) se font en YAML.
+- Le tri par nom utilise le nom affiché, donc le nom personnalisé.
 
 ## Seuils des jauges
 
@@ -188,10 +226,10 @@ Pour masquer tous les boutons : `show_actions: false`.
 | « Aucune entité Proxmox trouvée » | L'intégration `proxmoxve` n'est pas installée, ou aucun nœud / invité n'est suivi dans ses options |
 | La carte n'apparaît pas dans le sélecteur | Ressource non ajoutée ou cache : vérifier `/local/proxmox-card.js` (type module) et faire Ctrl+F5 |
 | Jauge RAM ou disque à « – » | Entité de mémoire / disque désactivée par défaut : l'activer (voir plus haut). Un conteneur arrêté remonte son disque en « inconnu » |
-| Pas de boutons | Entités `button.*` désactivées, ou privilège `VM.PowerMgmt` manquant côté Proxmox |
+| Pas de boutons | Entités `button.*` désactivées, ou privilège `VM.PowerMgmt` manquant côté Proxmox. L'éditeur visuel l'indique sous l'option « Boutons marche / arrêt » (« 6 invités sur 6 ont des boutons… » ou « Aucun bouton trouvé… ») |
 | Un invité manque | Les modèles (templates) ne sont jamais suivis ; vérifier aussi `node` et `show_stopped` |
 | Pas d'IP affichée | Capteur « IP address » absent : nécessite l'agent invité (VM) ou les droits `VM.Audit` (LXC) |
-| Mauvais capteur reconnu | Ouvrez une *issue* en joignant la liste de vos entités `proxmoxve` (nom, clé de traduction, `entity_id`) |
+| Mauvais capteur reconnu | [Ouvrez une issue](https://github.com/aubierr/ha-proxmox-card/issues/new/choose) : le modèle fournit un script qui liste vos entités `proxmoxve` (nom, clé de traduction, `entity_id`) |
 
 ## Développement
 
@@ -203,6 +241,22 @@ Une page de test avec un faux objet `hass` est fournie dans [`test/`](test/index
 python -m http.server 8765
 # puis ouvrir http://localhost:8765/test/index.html
 ```
+
+Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (largeur de la carte en px), `?single=1` (une seule carte), `?shot=1` (sans bouton, pour les captures). Les icônes sont chargées depuis Internet (jsDelivr).
+
+Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
+
+```bash
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1210   --virtual-time-budget=12000 --screenshot=docs/screenshots/card-light.png   "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+```
+
+### Vérifications automatiques
+
+Le workflow [`validate.yml`](.github/workflows/validate.yml) s'exécute à chaque *push* et chaque semaine :
+
+- **HACS** : validation officielle du dépôt ([hacs/action](https://github.com/hacs/action)) ;
+- **JavaScript** : vérification de la syntaxe du module ;
+- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes.
 
 ## Remerciements
 
