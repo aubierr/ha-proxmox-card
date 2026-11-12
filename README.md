@@ -27,9 +27,9 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 - **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve`.
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
-- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, charge système, IO delay et version de Proxmox.
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, barre de swap, puis une bande bien visible avec la charge système et l'IO delay (orange / rouge selon `thresholds.io`) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
-- **Tri des invités** : boutons Type / ID / Nom / État ; un second clic sur le bouton actif inverse l'ordre (le choix est conservé jusqu'au rechargement de la page, le tri par défaut se règle avec `sort`).
+- **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type pour regrouper, puis ID / Nom / État ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
@@ -96,7 +96,10 @@ show_swap: true
 show_load: true
 show_version: true
 show_sort: true
-sort: type               # type | id | name | status
+sort: id                 # id | name | status
+sort_dir: asc            # asc | desc
+group_by_type: false     # true = VM puis LXC (ou l'inverse avec type_order)
+type_order: vm_first     # vm_first | lxc_first
 language: fr
 thresholds:
   cpu:         { warning: 60, critical: 85 }
@@ -104,6 +107,7 @@ thresholds:
   disk:        { warning: 80, critical: 90 }
   temperature: { warning: 55, critical: 70 }
   wear:        { warning: 70, critical: 90 }
+  io:          { warning: 5,  critical: 15 }
 ```
 
 | Option | Type | Défaut | Description |
@@ -125,7 +129,10 @@ thresholds:
 | `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
 | `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds |
 | `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
-| `sort` | texte | `type` | Tri par défaut des invités : `type` (VM puis LXC, chacun par ID), `id`, `name` ou `status` (actifs d'abord) |
+| `sort` | texte | `id` | Critère de tri des invités : `id`, `name` ou `status` (actifs d'abord) |
+| `sort_dir` | texte | `asc` | Sens du tri : `asc` ou `desc` |
+| `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
+| `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
 | `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
 | `language` | texte | `auto` | `auto`, `en` ou `fr` |
 
@@ -138,6 +145,7 @@ thresholds:
 | `disk` (nœuds, invités, stockages) | 80 % | 90 % |
 | `temperature` (disques physiques) | 55 °C | 70 °C |
 | `wear` (usure des disques) | 70 % | 90 % |
+| `io` (IO delay des nœuds) | 5 % | 15 % |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
 

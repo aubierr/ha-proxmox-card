@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Tri des invités réglable dans la configuration : `sort` (`id`, `name`, `status`), `sort_dir` (`asc`, `desc`), `group_by_type` et `type_order` (`vm_first`, `lxc_first`). Section « Tri des invités » dans l'éditeur.
+- Par défaut, tous les invités sont triés par ID croissant (VM et LXC mélangés). Le bouton « Type » de la carte active ou désactive le regroupement VM / LXC.
+- `sort: type` (v0.4.0) reste accepté : tri par ID avec regroupement par type.
+- Charge, IO delay et version de Proxmox mis en évidence : pastille orange « PVE 9.2.26 » à côté du nom du nœud, et une bande avec pastilles d'icônes, valeurs en gras et libellés pour la charge et l'IO delay ; l'IO delay passe en orange puis rouge (seuil `thresholds.io`, 5 % / 15 % par défaut).
+
 ## 0.4.0
 
 - Tri des invités : boutons Type / ID / Nom / État dans l'en-tête de la section (un second clic inverse l'ordre), tri par défaut réglable avec `sort`, boutons masquables avec `show_sort`.

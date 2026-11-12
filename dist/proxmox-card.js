@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -11,11 +11,12 @@ const DEFAULT_THRESHOLDS = {
   disk: { warning: 80, critical: 90 },
   temperature: { warning: 55, critical: 70 },
   wear: { warning: 70, critical: 90 },
+  io: { warning: 5, critical: 15 },
 };
 
 const STRINGS = {
-  en: { nodes: "Nodes", online: "online", running: "running", vms: "VMs", cts: "CTs", cpu: "CPU", ram: "RAM", disk: "Disk", uptime: "Uptime", start: "Start", shutdown: "Shutdown", reboot: "Reboot", stop: "Force stop", noData: "No Proxmox entities found. Is the proxmoxve integration set up?", noRegistry: "This card needs a recent Home Assistant (entity and device registry in the frontend).", guests: "Guests", stopped: "stopped", unknown: "unknown", confirm: "Confirm: ", storage: "Storage", disks: "Physical disks", swap: "Swap", load: "Load", io: "IO", updates: "updates available", backup: "backup running", failed: "failed tasks", inactive: "storage inactive", diskProblem: "disk problem", temp: "Temp", wear: "Wear", locked: "Locked", agentDown: "Guest agent not responding", problem: "Problem reported", sortId: "ID", sortType: "Type", sortName: "Name", sortStatus: "Status" },
-  fr: { nodes: "Nœuds", online: "en ligne", running: "actifs", vms: "VM", cts: "CT", cpu: "CPU", ram: "RAM", disk: "Disque", uptime: "Uptime", start: "Démarrer", shutdown: "Arrêter", reboot: "Redémarrer", stop: "Forcer l'arrêt", noData: "Aucune entité Proxmox trouvée. L'intégration proxmoxve est-elle installée ?", noRegistry: "Cette carte nécessite une version récente de Home Assistant.", guests: "Invités", stopped: "arrêté", unknown: "inconnu", confirm: "Confirmer : ", storage: "Stockages", disks: "Disques physiques", swap: "Swap", load: "Charge", io: "IO", updates: "mises à jour", backup: "sauvegarde en cours", failed: "tâches en échec", inactive: "stockage inactif", diskProblem: "disque en défaut", temp: "Temp.", wear: "Usure", locked: "Verrouillé", agentDown: "Agent invité injoignable", problem: "Problème signalé", sortId: "ID", sortType: "Type", sortName: "Nom", sortStatus: "État" },
+  en: { nodes: "Nodes", online: "online", running: "running", vms: "VMs", cts: "CTs", cpu: "CPU", ram: "RAM", disk: "Disk", uptime: "Uptime", start: "Start", shutdown: "Shutdown", reboot: "Reboot", stop: "Force stop", noData: "No Proxmox entities found. Is the proxmoxve integration set up?", noRegistry: "This card needs a recent Home Assistant (entity and device registry in the frontend).", guests: "Guests", stopped: "stopped", unknown: "unknown", confirm: "Confirm: ", storage: "Storage", disks: "Physical disks", swap: "Swap", load: "Load", io: "IO delay", version: "Version", updates: "updates available", backup: "backup running", failed: "failed tasks", inactive: "storage inactive", diskProblem: "disk problem", temp: "Temp", wear: "Wear", locked: "Locked", agentDown: "Guest agent not responding", problem: "Problem reported", sortId: "ID", sortType: "Type", sortName: "Name", sortStatus: "Status" },
+  fr: { nodes: "Nœuds", online: "en ligne", running: "actifs", vms: "VM", cts: "CT", cpu: "CPU", ram: "RAM", disk: "Disque", uptime: "Uptime", start: "Démarrer", shutdown: "Arrêter", reboot: "Redémarrer", stop: "Forcer l'arrêt", noData: "Aucune entité Proxmox trouvée. L'intégration proxmoxve est-elle installée ?", noRegistry: "Cette carte nécessite une version récente de Home Assistant.", guests: "Invités", stopped: "arrêté", unknown: "inconnu", confirm: "Confirmer : ", storage: "Stockages", disks: "Disques physiques", swap: "Swap", load: "Charge", io: "IO delay", version: "Version", updates: "mises à jour", backup: "sauvegarde en cours", failed: "tâches en échec", inactive: "stockage inactif", diskProblem: "disque en défaut", temp: "Temp.", wear: "Usure", locked: "Verrouillé", agentDown: "Agent invité injoignable", problem: "Problème signalé", sortId: "ID", sortType: "Type", sortName: "Nom", sortStatus: "État" },
 };
 
 const css = `
@@ -71,8 +72,15 @@ ha-card > * { position:relative; }
 .ring > span { font-size:12px; font-weight:500; color:var(--secondary-text-color); }
 .metric { display:grid; grid-template-columns:42px 1fr 44px; align-items:center; gap:8px; font-size:12px; color:var(--secondary-text-color); }
 .metric b { text-align:right; font-weight:600; color:var(--primary-text-color); font-variant-numeric:tabular-nums; }
-.xtra { font-size:11px; color:var(--secondary-text-color); display:flex; gap:6px; flex-wrap:wrap; }
-.xtra span { padding:2px 8px; border-radius:10px; background:color-mix(in srgb,var(--primary-text-color) 7%,transparent); }
+.ver { font-size:11px; font-weight:600; padding:3px 10px; border-radius:10px; white-space:nowrap; color:var(--px-accent); background:color-mix(in srgb,var(--px-accent) 14%,transparent); }
+.strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); padding-top:14px; border-top:1px solid var(--px-line); }
+.si { --c:var(--px-accent); display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; }
+.si + .si { border-left:1px solid var(--px-line); }
+.si.warn { --c:var(--px-warn); } .si.crit { --c:var(--px-crit); }
+.si .ic { --mdc-icon-size:18px; flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:var(--c); background:color-mix(in srgb,var(--c) 14%,transparent); }
+.si b { display:block; font-size:18px; font-weight:700; letter-spacing:-.01em; line-height:1.1; color:var(--primary-text-color); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.si.warn b { color:var(--px-warn); } .si.crit b { color:var(--px-crit); }
+.si small { display:block; font-size:11px; color:var(--secondary-text-color); margin-top:2px; white-space:nowrap; }
 .guests { display:flex; flex-direction:column; gap:8px; }
 .g { display:grid; grid-template-columns:40px minmax(0,1.2fr) minmax(0,2.4fr) auto; align-items:center; gap:12px; padding:10px 12px; border-radius:14px; background:var(--px-tile); border:1px solid var(--px-line); border-left:4px solid var(--px-ok); cursor:pointer; transition:background .15s; }
 .g:hover { background:color-mix(in srgb,var(--px-tile) 80%,var(--primary-text-color) 8%); }
@@ -186,9 +194,9 @@ function statusOf(ent, hass) {
   return s === "unavailable" ? "unknown" : "other";
 }
 
-const SORTS = ["type", "id", "name", "status"];
+const SORTS = ["id", "name", "status"];
 const EDITOR_DEFAULTS = {
-  sort: "type", show_sort: true,
+  sort: "id", sort_dir: "asc", group_by_type: false, type_order: "vm_first", show_sort: true,
   title: "Proxmox", node: "", show_nodes: true, show_qemu: true, show_lxc: true, show_stopped: true, show_actions: true, show_ip: true,
   show_uptime: true, show_badges: true, show_alerts: true, show_storage: true, show_disks: true, show_swap: true, show_load: true,
   show_version: true, language: "auto",
@@ -202,13 +210,18 @@ const EDITOR_SCHEMA = [
   ] },
   { type: "expandable", name: "", title: "Details", icon: "mdi:tune-variant", expanded: true, schema: [
     { type: "grid", name: "", schema: ["show_actions", "show_ip", "show_uptime", "show_badges", "show_swap", "show_load", "show_version", "show_sort"].map(bool) },
-    { name: "sort", selector: { select: { options: [{ value: "type", label: "Type (VM, LXC) + ID" }, { value: "id", label: "ID" }, { value: "name", label: "Name / Nom" }, { value: "status", label: "Status / État" }], mode: "dropdown" } } },
+  ] },
+  { type: "expandable", name: "", title: "Sort", icon: "mdi:sort", expanded: true, schema: [
+    { name: "sort", selector: { select: { options: [{ value: "id", label: "ID" }, { value: "name", label: "Name / Nom" }, { value: "status", label: "Status / État" }], mode: "dropdown" } } },
+    { name: "sort_dir", selector: { select: { options: [{ value: "asc", label: "↑ Ascending / Croissant" }, { value: "desc", label: "↓ Descending / Décroissant" }], mode: "dropdown" } } },
+    bool("group_by_type"),
+    { name: "type_order", selector: { select: { options: [{ value: "vm_first", label: "VM → LXC" }, { value: "lxc_first", label: "LXC → VM" }], mode: "dropdown" } } },
   ] },
   { name: "language", selector: { select: { options: [{ value: "auto", label: "Auto" }, { value: "en", label: "English" }, { value: "fr", label: "Français" }], mode: "dropdown" } } },
 ];
 const EDITOR_LABELS = {
-  en: { title: "Title", node: "Filter by node / name (optional)", show_nodes: "Nodes", show_qemu: "Virtual machines", show_lxc: "Containers", show_stopped: "Stopped guests", show_alerts: "Alerts (updates, backup, failed tasks…)", show_storage: "Storages", show_disks: "Physical disks", show_actions: "Power buttons", show_ip: "IP address", show_uptime: "Guest uptime", show_badges: "Guest badges (locked, agent, problem)", show_swap: "Node swap", show_load: "Load and IO delay", show_version: "Proxmox version", show_sort: "Sort buttons", sort: "Default guest sort", language: "Language", Sections: "Sections", Details: "Details" },
-  fr: { title: "Titre", node: "Filtrer par nœud / nom (facultatif)", show_nodes: "Nœuds", show_qemu: "Machines virtuelles", show_lxc: "Conteneurs", show_stopped: "Invités arrêtés", show_alerts: "Alertes (mises à jour, sauvegarde, tâches en échec…)", show_storage: "Stockages", show_disks: "Disques physiques", show_actions: "Boutons marche / arrêt", show_ip: "Adresse IP", show_uptime: "Uptime des invités", show_badges: "Badges des invités (verrouillé, agent, problème)", show_swap: "Swap des nœuds", show_load: "Charge et IO delay", show_version: "Version de Proxmox", show_sort: "Boutons de tri", sort: "Tri des invités par défaut", language: "Langue", Sections: "Sections", Details: "Détails" },
+  en: { title: "Title", node: "Filter by node / name (optional)", show_nodes: "Nodes", show_qemu: "Virtual machines", show_lxc: "Containers", show_stopped: "Stopped guests", show_alerts: "Alerts (updates, backup, failed tasks…)", show_storage: "Storages", show_disks: "Physical disks", show_actions: "Power buttons", show_ip: "IP address", show_uptime: "Guest uptime", show_badges: "Guest badges (locked, agent, problem)", show_swap: "Node swap", show_load: "Load and IO delay", show_version: "Proxmox version", show_sort: "Sort buttons on the card", sort: "Sort guests by", sort_dir: "Direction", group_by_type: "Group by type (VM / LXC)", type_order: "Type order (when grouped)", language: "Language", Sections: "Sections", Details: "Details", Sort: "Guest sort" },
+  fr: { title: "Titre", node: "Filtrer par nœud / nom (facultatif)", show_nodes: "Nœuds", show_qemu: "Machines virtuelles", show_lxc: "Conteneurs", show_stopped: "Invités arrêtés", show_alerts: "Alertes (mises à jour, sauvegarde, tâches en échec…)", show_storage: "Stockages", show_disks: "Disques physiques", show_actions: "Boutons marche / arrêt", show_ip: "Adresse IP", show_uptime: "Uptime des invités", show_badges: "Badges des invités (verrouillé, agent, problème)", show_swap: "Swap des nœuds", show_load: "Charge et IO delay", show_version: "Version de Proxmox", show_sort: "Boutons de tri sur la carte", sort: "Trier les invités par", sort_dir: "Sens", group_by_type: "Regrouper par type (VM / LXC)", type_order: "Ordre des types (si regroupé)", language: "Langue", Sections: "Sections", Details: "Détails", Sort: "Tri des invités" },
 };
 
 /** Visual editor: shows the effective value of every option (missing keys = default), so the toggles never lie. */
@@ -262,7 +275,7 @@ export class ProxmoxCard extends HTMLElement {
     this._cfg = {
       title: "Proxmox", node: "", show_nodes: true, show_qemu: true, show_lxc: true, show_stopped: true,
       show_actions: true, show_ip: true, show_uptime: true, show_badges: true, show_swap: true, show_load: true,
-      show_version: true, show_alerts: true, show_storage: true, show_disks: true, show_sort: true, sort: "type", language: "auto", ...config,
+      show_version: true, show_alerts: true, show_storage: true, show_disks: true, show_sort: true, sort: "id", sort_dir: "asc", group_by_type: false, type_order: "vm_first", language: "auto", ...config,
       thresholds: Object.fromEntries(Object.entries(DEFAULT_THRESHOLDS).map(([k, v]) => [k, { ...v, ...((config.thresholds || {})[k] || {}) }])),
     };
     this._sort = null;
@@ -349,17 +362,27 @@ export class ProxmoxCard extends HTMLElement {
   }
   _xtra(n) {
     const c = this._cfg, r = n.roles, parts = [];
+    const cell = (icon, label, value, cl = "") => parts.push(`<div class="si ${cl}"><span class="ic"><ha-icon icon="${icon}"></ha-icon></span><div><b>${esc(value)}</b><small>${esc(label)}</small></div></div>`);
     if (c.show_load) {
       const l = num(this._state(r.load)), io = num(this._state(r.io));
-      if (l !== null) parts.push(`${this._t("load")} ${l.toFixed(2)}`);
-      if (io !== null) parts.push(`${this._t("io")} ${io.toFixed(1)}%`);
+      if (l !== null) cell("mdi:speedometer", this._t("load"), l.toFixed(2));
+      if (io !== null) cell("mdi:timer-sand", this._t("io"), `${io.toFixed(1)} %`, level(io, c.thresholds.io));
     }
-    const v = c.show_version ? this._state(r.version) : "";
-    if (v && !/^unk|^unav/.test(v)) parts.push(`v${v}`);
-    return parts.length ? `<div class="xtra">${parts.map((p) => `<span>${esc(p)}</span>`).join("")}</div>` : "";
+    return parts.length ? `<div class="strip">${parts.join("")}</div>` : "";
+  }
+  _ver(n) {
+    const v = this._cfg.show_version ? this._state(n.roles.version) : "";
+    return v && !/^unk|^unav/.test(v) ? `<span class="ver" title="${esc(this._t("version"))}">PVE ${esc(v)}</span>` : "";
   }
   _sortState() {
-    return (this._sort ||= { by: SORTS.includes(this._cfg.sort) ? this._cfg.sort : "type", dir: "asc" });
+    const c = this._cfg;
+    // legacy `sort: type` (v0.4.0) = by ID, grouped by type
+    return (this._sort ||= {
+      by: SORTS.includes(c.sort) ? c.sort : "id",
+      dir: c.sort_dir === "desc" ? "desc" : "asc",
+      group: c.sort === "type" || !!c.group_by_type,
+      first: c.type_order === "lxc_first" ? "lxc" : "vm",
+    });
   }
   _ring(label, v, thr) {
     const r = 43, circ = 2 * Math.PI * r, off = circ * (1 - (v ?? 0) / 100), id = `g${this._rid = (this._rid || 0) + 1}`;
@@ -410,7 +433,7 @@ export class ProxmoxCard extends HTMLElement {
           const s = statusOf(n.roles.status, this._hass);
           const up = fmtUptime(this._state(n.roles.uptime));
           return `<div class="node ${s === "off" ? "off" : ""}" data-more="${esc((n.roles.status || n.roles.cpu).entity_id)}">
-            <div class="nhead"><span class="dot ${s === "on" ? "on" : s === "off" ? "off" : ""}"></span><span class="nname">${esc(n.name)}</span>${up ? `<span class="up">${esc(up)}</span>` : ""}</div>
+            <div class="nhead"><span class="dot ${s === "on" ? "on" : s === "off" ? "off" : ""}"></span><span class="nname">${esc(n.name)}</span>${this._ver(n)}${up ?`<span class="up">${esc(up)}</span>` : ""}</div>
             <div class="rings">${this._ring(this._t("cpu"), this._pct(n, "cpu"), T.cpu)}${this._ring(this._t("ram"), this._pct(n, "mem"), T.memory)}${this._ring(this._t("disk"), this._pct(n, "disk"), T.disk)}</div>
             ${c.show_swap && n.roles.swap_pct ? this._metric(this._t("swap"), this._pct(n, "swap"), T.memory) : ""}
             ${this._xtra(n)}</div>`;
@@ -423,13 +446,15 @@ export class ProxmoxCard extends HTMLElement {
       const rank = (g) => (statusOf(g.roles.status, this._hass) === "on" ? 0 : 1);
       const cmp = {
         id: (a, b) => idn(a) - idn(b) || byName(a, b),
-        type: (a, b) => (a.kind === b.kind ? 0 : a.kind === "qemu" ? -1 : 1) || idn(a) - idn(b),
-        name: byName,
+        name: (a, b) => byName(a, b) || idn(a) - idn(b),
         status: (a, b) => rank(a) - rank(b) || idn(a) - idn(b),
       }[st.by];
-      shown.sort((a, b) => dir * cmp(a, b));
+      // optional grouping VM / LXC (order set by `type_order`), then the chosen criterion inside each group
+      const grp = (a, b) => (!st.group || a.kind === b.kind ? 0 : (a.kind === "qemu") === (st.first === "vm") ? -1 : 1);
+      shown.sort((a, b) => grp(a, b) || dir * cmp(a, b));
       if (shown.length) {
-        const sortbar = c.show_sort && shown.length > 1 ? `<span class="sortbar">${SORTS.map((k) => `<button class="sortbtn ${st.by === k ? "on" : ""}" data-sort="${k}">${esc(this._t("sort" + k[0].toUpperCase() + k.slice(1)))}${st.by === k ? (st.dir === "desc" ? " ↓" : " ↑") : ""}</button>`).join("")}</span>` : "";
+        const btn = (k, on, label, arrow) => `<button class="sortbtn ${on ? "on" : ""}" data-sort="${k}">${esc(label)}${arrow}</button>`;
+        const sortbar = c.show_sort && shown.length > 1 ? `<span class="sortbar">${btn("type", st.group, this._t("sortType"), "")}${SORTS.map((k) => btn(k, st.by === k, this._t("sort" + k[0].toUpperCase() + k.slice(1)), st.by === k ? (st.dir === "desc" ? " ↓" : " ↑") : "")).join("")}</span>` : "";
         html += `<div class="sec">${esc(this._t("guests"))}${sortbar}</div><div class="guests">` + shown.map((g) => {
           const s = statusOf(g.roles.status, this._hass);
           const on = s === "on";
@@ -517,7 +542,8 @@ export class ProxmoxCard extends HTMLElement {
     if (so) {
       e.stopPropagation();
       const by = so.dataset.sort, cur = this._sortState();
-      this._sort = cur.by === by ? { by, dir: cur.dir === "asc" ? "desc" : "asc" } : { by, dir: "asc" };
+      if (by === "type") this._sort = { ...cur, group: !cur.group }; // toggle VM / LXC grouping
+      else this._sort = { ...cur, by, dir: cur.by === by ? (cur.dir === "asc" ? "desc" : "asc") : "asc" };
       this._last = ""; this._render();
       return;
     }

@@ -34,7 +34,7 @@
     dev(id, `Disk pve: ${n}`, "SSD"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
   }
   const guests = [["q1", "QEMU homeassistant (101)", "QEMU", "running", 12, 78, "192.168.1.20"], ["q2", "QEMU docmost (109)", "QEMU", "stopped", 0, 0, ""], ["q3", "QEMU nas (104)", "QEMU", "running", 95, 91, "192.168.1.30"],
-    ["l1", "LXC CT516 (516)", "LXC", "running", 4, 33, "192.168.1.51"]];
+    ["l1", "LXC CT516 (516)", "LXC", "running", 4, 33, "192.168.1.51"], ["l2", "LXC docker (100)", "LXC", "running", 2, 40, "192.168.1.52"], ["q4", "QEMU win (200)", "QEMU", "running", 30, 60, "192.168.1.53"]];
   for (const [id, name, model, st, cpu, mem, ip] of guests) {
     dev(id, name, model); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem); ent(id, "sensor", "disk_used_perc", st === "running" ? 30 + cpu : "unknown");
     ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", new Date(Date.now() - 3.2 * 864e5).toISOString());
