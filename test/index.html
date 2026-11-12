@@ -13,7 +13,7 @@
 <button onclick="document.body.classList.toggle('dark')">dark</button>
 <div class="wrap" id="a"></div><div class="narrow" id="b"></div>
 <script type="module">
-  import { ProxmoxCard } from "../src/proxmox-card.js";
+  import { ProxmoxCard } from "../proxmox-card.js";
   const states = {}, entities = {}, devices = {};
   const dev = (id, name, model) => (devices[id] = { id, name, model });
   const ent = (device_id, domain, key, state, extra = {}) => {
