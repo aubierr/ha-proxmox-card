@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 
 const DEFAULT_THRESHOLDS = {
   cpu: { warning: 70, critical: 90 },
@@ -257,6 +257,21 @@ function fmtUsedTotal(used, total) {
   const d = t >= 100 ? 0 : t >= 10 ? 1 : 2;
   return `${u.toFixed(d)} / ${t.toFixed(d)} ${SIZES[i]}`;
 }
+/** Bytes per unit of an entity ("" = bytes); null when the unit is unknown, so a wrong scale is never shown silently. */
+function unitFactor(st) {
+  const u = st?.attributes?.unit_of_measurement;
+  return u ? BYTES[u] ?? null : 1;
+}
+/** Next network sample record for a cumulative counter. rec / cur = { b: bytes, t: ms }; the rate is in bytes per second. */
+function nextNet(rec, cur, now) {
+  if (!rec) return { ...cur, dt: 0, rate: null };
+  if (cur.t !== rec.t) {
+    const dt = (cur.t - rec.t) / 1000, r = dt > 0 ? (cur.b - rec.b) / dt : null; // negative = counter reset (guest restarted)
+    return { ...cur, dt, rate: r !== null && r >= 0 ? r : null };
+  }
+  // HA does not update a state whose value is unchanged: no new sample for a few polls = no traffic
+  return (now - rec.t) / 1000 > Math.max(3 * rec.dt, 90) ? { ...rec, rate: 0 } : rec;
+}
 /** Sparkline paths (viewBox 120 x 36) for a series of 0..100 values; null = no data. */
 function sparkPaths(pts) {
   const W = 120, H = 36, n = pts.length;
@@ -499,6 +514,7 @@ export class ProxmoxCard extends HTMLElement {
     this._sort = null;
     this._coll = null;
     this._histKey = "";
+    this._net = {}; this._netSeed = {};
     this._last = "";
     if (this._hass) this._render();
   }
@@ -626,13 +642,13 @@ export class ProxmoxCard extends HTMLElement {
     });
   }
   _ring(label, v, thr, sz) {
-    const tip = sz ? fmtUsedTotal(sz.used, sz.total) : "";
+    const { tip, title, text } = this._sizeInfo(sz);
     const r = 43, circ = 2 * Math.PI * r, off = circ * (1 - (v ?? 0) / 100), id = `g${this._rid = (this._rid || 0) + 1}`;
-    return `<div class="ring ${v === null ? "none" : level(v, thr)}" title="${esc(tip)}"><div class="rg"><svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb,var(--c) 55%,#fff)"/><stop offset="1" style="stop-color:var(--c)"/></linearGradient></defs><circle class="rf" cx="50" cy="50" r="${r - 4}"/><circle class="rt" cx="50" cy="50" r="${r}"/><circle class="rv" cx="50" cy="50" r="${r}" style="stroke:url(#${id})" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 50 50)"/></svg><b>${v === null ? "–" : Math.round(v)}${v === null ? "" : "<small>%</small>"}</b></div><span>${label}${tip && this._cfg.show_sizes ? `<em>${esc(tip)}</em>` : ""}</span></div>`;
+    return `<div class="ring ${v === null ? "none" : level(v, thr)}"${title}><div class="rg"><svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb,var(--c) 55%,#fff)"/><stop offset="1" style="stop-color:var(--c)"/></linearGradient></defs><circle class="rf" cx="50" cy="50" r="${r - 4}"/><circle class="rt" cx="50" cy="50" r="${r}"/><circle class="rv" cx="50" cy="50" r="${r}" style="stroke:url(#${id})" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 50 50)"/></svg><b>${v === null ? "–" : Math.round(v)}${v === null ? "" : "<small>%</small>"}</b></div><span>${label}${text ? `<em>${esc(text)}</em>` : ""}</span></div>`;
   }
   _mini(label, v, thr, sz) {
-    const tip = sz ? fmtUsedTotal(sz.used, sz.total) : "";
-    return `<div class="gm" title="${esc(tip)}"><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div>${tip && this._cfg.show_sizes ? `<small class="gs">${esc(tip)}</small>` : ""}</div>`;
+    const { title, text } = this._sizeInfo(sz);
+    return `<div class="gm"${title}><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div>${text ? `<small class="gs">${esc(text)}</small>` : ""}</div>`;
   }
 
   _sec(key, title, extra = "") {
@@ -654,9 +670,14 @@ export class ProxmoxCard extends HTMLElement {
     try { const k = "proxmox-card:" + this._cfg.title, st = JSON.parse(localStorage.getItem(k) || "{}"); st[key] = closed; localStorage.setItem(k, JSON.stringify(st)); } catch (e) { /* ignore */ }
     this._last = ""; this._render();
   }
+  /** Tooltip attribute and optional visible text for a { used, total } size. */
+  _sizeInfo(sz) {
+    const tip = sz ? fmtUsedTotal(sz.used, sz.total) : "";
+    return { tip, title: tip ? ` title="${esc(tip)}"` : "", text: tip && this._cfg.show_sizes ? tip : "" };
+  }
   _bytes(ent) {
-    const st = ent && this._hass.states[ent.entity_id], v = num(st?.state);
-    return v === null ? null : v * (BYTES[st.attributes?.unit_of_measurement] ?? 1);
+    const st = ent && this._hass.states[ent.entity_id], v = num(st?.state), f = unitFactor(st);
+    return v === null || f === null ? null : v * f;
   }
   /** Used / free / total in bytes for kind "mem" or "disk"; whatever is missing is deduced from the other values. */
   _sizes(item, kind) {
@@ -671,19 +692,14 @@ export class ProxmoxCard extends HTMLElement {
   }
   /** Proxmox exposes network in / out as cumulative byte counters: read one as bytes with its timestamp. */
   _netBytes(ent) {
-    const st = ent && this._hass.states[ent.entity_id], v = num(st?.state);
-    return v === null ? null : { b: v * (BYTES[st.attributes?.unit_of_measurement] ?? 1), t: Date.parse(st.last_updated) || Date.now() };
+    const b = this._bytes(ent), t = b === null ? NaN : Date.parse(this._hass.states[ent.entity_id].last_updated);
+    return Number.isFinite(t) ? { b, t } : null;
   }
   _netRate(ent) {
     const cur = this._netBytes(ent);
     if (!cur) return null;
-    const id = ent.entity_id, rec = this._net[id];
-    if (!rec) { this._net[id] = { ...cur, rate: null }; return null; }
-    if (cur.t !== rec.t) {
-      const dt = (cur.t - rec.t) / 1000, r = dt > 0 ? (cur.b - rec.b) / dt : null; // a negative value = counter reset (guest restarted)
-      this._net[id] = { ...cur, rate: r !== null && r >= 0 ? r : null };
-    }
-    return this._net[id].rate;
+    const id = ent.entity_id;
+    return (this._net[id] = nextNet(this._net[id], cur, Date.now())).rate;
   }
   _netHtml(g) {
     const c = this._cfg;
@@ -705,24 +721,27 @@ export class ProxmoxCard extends HTMLElement {
     const ids = [...new Set(this._netWant || [])].filter((id) => !this._netSeed[id]);
     if (!c?.show_network || c.network_mode !== "rate" || !ids.length || !h?.callWS || this._netBusy) return;
     this._netBusy = true;
-    ids.forEach((id) => { this._netSeed[id] = true; }); // never retry the same entity
+    ids.forEach((id) => { this._netSeed[id] = true; });
+    let ok = false;
     try {
       const end = new Date(), start = new Date(end - 20 * 60e3);
       const res = await h.callWS({ type: "history/history_during_period", start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: ids, include_start_time_state: true, significant_changes_only: false, minimal_response: true, no_attributes: true });
       for (const id of ids) {
-        const f = BYTES[h.states[id]?.attributes?.unit_of_measurement] ?? 1;
+        const f = unitFactor(h.states[id]);
+        if (f === null) continue;
         const pts = (res?.[id] || []).map((e) => ({ t: (e.lu ?? Date.parse(e.last_updated) / 1000) * 1000, b: Number(e.s ?? e.state) * f })).filter((e) => Number.isFinite(e.t) && Number.isFinite(e.b));
         const rec = this._net[id];
         if (rec && !pts.some((p) => Math.abs(p.t - rec.t) < 1000)) pts.push({ t: rec.t, b: rec.b });
         pts.sort((a, b) => a.t - b.t);
         if (pts.length >= 2) {
           const a = pts[pts.length - 2], b = pts[pts.length - 1], r = (b.b - a.b) / ((b.t - a.t) / 1000);
-          this._net[id] = { b: b.b, t: b.t, rate: Number.isFinite(r) && r >= 0 ? r : null };
+          this._net[id] = { b: b.b, t: b.t, dt: (b.t - a.t) / 1000, rate: Number.isFinite(r) && r >= 0 ? r : null };
         }
       }
-    } catch (e) { /* no recorder: the rate appears after the next two polls */ }
+      ok = true;
+    } catch (e) { ids.forEach((id) => { delete this._netSeed[id]; }); } // retried on a later render; without a recorder the rate appears after two polls
     this._netBusy = false;
-    this._last = ""; this._render();
+    if (ok) { this._last = ""; this._render(); }
   }
   _clusterTile(data, nOn, T) {
     const cl = data.cluster, r = cl.roles;
@@ -809,7 +828,7 @@ export class ProxmoxCard extends HTMLElement {
         if (inactive) al.push(["crit", `${inactive} ${this._t("inactive")}`]);
         const dprob = data.disks.filter((d) => isOn(d.roles.health)).length;
         if (dprob) al.push(["crit", `${dprob} ${this._t("diskProblem")}`]);
-        const full = data.storage.filter((x) => (this._pct(x, "disk") ?? 0) >= T.disk.critical).length;
+        const full = data.storage.filter((x) => this._state(x.roles.active) !== "off" && this._state(x.roles.enabled) !== "off" && (this._pct(x, "disk") ?? 0) >= T.disk.critical).length;
         if (full) al.push(["crit", `${full} ${this._t("storageFull")}`]);
         if (al.length) html += `<div class="alerts">${al.map(([cl, tx]) => `<span class="chip ${cl}">${esc(tx)}</span>`).join("")}</div>`;
       }
@@ -927,6 +946,7 @@ export class ProxmoxCard extends HTMLElement {
     if (accent) this._root.style.setProperty("--px-accent", accent); else this._root.style.removeProperty("--px-accent");
     if (html !== this._last) { this._last = html; morph(this._root, html); }
     if (c.show_history) this._loadHistory();
+    for (const id in this._net) if (!this._hass.states[id]) delete this._net[id];
     this._seedNet();
   }
 

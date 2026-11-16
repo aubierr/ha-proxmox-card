@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1
+
+- Réseau : le débit retombe à 0 quand le compteur d'un invité ne bouge plus (au lieu de rester figé sur la dernière valeur) ; un horodatage illisible n'affiche plus de débit aberrant ; les unités inconnues ne sont plus prises pour des octets.
+- Amorçage du débit depuis l'historique : nouvel essai au rendu suivant en cas d'échec, remise à zéro au changement de configuration, purge des entités disparues.
+- Pastille « stockage presque plein » : ignore les stockages inactifs ou désactivés.
+- Nettoyage : calcul de l'infobulle des tailles et lecture des octets factorisés ; nouveau test `test/check-format.mjs` (formatage, unités, débit).
+
 ## 1.1.0
 
 - Réseau entrant et sortant par invité (`show_network`) : débit calculé à partir des compteurs cumulés de l'intégration, affiché sous le nom de chaque invité qui tourne. Le débit apparaît tout de suite grâce à l'historique de Home Assistant.

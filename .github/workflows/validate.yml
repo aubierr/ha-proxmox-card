@@ -33,3 +33,5 @@ jobs:
           node --check "$RUNNER_TEMP/proxmox-card.mjs"
       - name: Check that every language is complete
         run: node test/check-i18n.mjs
+      - name: Check size formatting and network rate
+        run: node test/check-format.mjs

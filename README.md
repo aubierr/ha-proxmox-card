@@ -323,7 +323,7 @@ Le workflow [`validate.yml`](.github/workflows/validate.yml) s'exécute à chaqu
 
 - **HACS** : validation officielle du dépôt ([hacs/action](https://github.com/hacs/action)) ;
 - **JavaScript** : vérification de la syntaxe du module ;
-- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes.
+- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes ; `node test/check-format.mjs` vérifie le formatage des tailles et le calcul du débit réseau.
 
 ## Remerciements
 
