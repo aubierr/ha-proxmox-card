@@ -17,7 +17,7 @@ assert.equal(fmtScaled(1000, SIZES), "1.00 kB");
 assert.equal(fmtScaled(12_500_000, RATE_BYTES), "12.5 MB/s");
 assert.equal(fmtScaled(150e6 * 8, RATE_BITS), "1.20 Gbit/s");
 assert.equal(fmtUsedTotal(2.5e9, 4e9), "2.50 / 4.00 GB");
-assert.equal(fmtUsedTotal(512e6, 1.5e12), "0.51 / 1.50 TB");
+assert.equal(fmtUsedTotal(512e9, 1.5e12), "0.51 / 1.50 TB");
 
 // units: "" = bytes, unknown = null (never a silent wrong scale)
 assert.equal(unitFactor({ attributes: {} }), 1);
