@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0
+
+- Sauvegardes trop anciennes : pastille orange quand la dernière sauvegarde d'un nœud a plus de 26 h, rouge au-delà de 50 h (`thresholds.backup_age`), pour repérer une planification arrêtée sans bruit.
+- Sauvegarde en cours : la pastille indique les invités concernés et la durée (« sauvegarde en cours · 3 invités · 12 min ») ; badge animé sur chaque invité en cours de sauvegarde.
+- Bilan de la dernière sauvegarde sur chaque nœud : « Dernière sauvegarde · 14 min · OK », avec le verdict de Proxmox, les invités couverts et l'utilisateur au survol. La pastille « sauvegarde en échec » nomme le nœud et le verdict (`job errors`…).
+- Nouvelle section « Sauvegardes » (`show_backup_section`, place réglable avec `section_order`) : dernière tâche de chaque nœud (ancienneté, durée, invités, verdict), sauvegarde en cours et invités sans sauvegarde.
+- Sauvegarde lancée par la carte : avec `backup: { storage, mode }`, « Sauvegarder maintenant » et « Sauvegarder tous les invités » utilisent l'action `proxmoxve_custom.backup` sur ce stockage, sans les boutons de sauvegarde de l'intégration, et ne relancent pas une sauvegarde déjà en cours ; un message indique si Proxmox l'a acceptée ou pourquoi il l'a refusée. Réglable dans l'éditeur visuel.
+- Tests : durées, unités et invités d'une tâche de sauvegarde dans `check-format.mjs`.
+
 ## 1.6.0
 
 - Diagnostic : bouton « Copier le diagnostic » dans l'éditeur visuel. Il copie ce que la carte a reconnu (appareils, rôles, entités ignorées, versions de Home Assistant et de l'intégration), prêt à coller dans une issue GitHub.

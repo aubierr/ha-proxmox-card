@@ -41,6 +41,7 @@
   if (q.get("single")) document.getElementById("b").remove();
   if (q.get("shot")) document.querySelector(".tools").remove();
   const lang = q.get("lang") || "fr";
+  const calm = !!q.get("calm"); // ?calm=1: everything healthy, no alert
 
   const states = {}, entities = {}, devices = {};
   const dev = (id, name, model, via) => (devices[id] = { id, name, model, via_device_id: via });
@@ -56,7 +57,12 @@
    ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"], ["sensor", "memory_used", 19.5, { unit_of_measurement: "GB" }], ["sensor", "memory_free", 12.5, { unit_of_measurement: "GB" }],
    ["sensor", "disk_total", 500, { unit_of_measurement: "GB" }], ["sensor", "disk_used", 370, { unit_of_measurement: "GB" }],
    ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
-  [["sensor", "backup_last", ago(0.3)], ["binary_sensor", "backup_status", "off"]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
+  // backups: pve backed up 7 h ago (14 min, OK) and backing up homeassistant now; srv2's last run is 3 days old and partly failed
+  [["sensor", "backup_last", ago(0.3), { status: "OK", guests: "100,101,102,200", user: "root@pam" }], ["binary_sensor", "backup_status", "off", { status: "OK" }],
+   ["sensor", "backup_duration", 14.2, { unit_of_measurement: "min" }]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
+  ent("n1", "binary_sensor", "backup_running", calm ? "off" : "on", calm ? {} : { running_since: new Date(Date.now() - 12 * 60e3).toISOString(), running_guests: "101" });
+  [["sensor", "backup_last", ago(calm ? 0.4 : 3.1), { status: calm ? "OK" : "job errors", guests: "103,104", user: "root@pam" }], ["binary_sensor", "backup_status", calm ? "off" : "on", { status: calm ? "OK" : "job errors" }],
+   ["sensor", "backup_duration", 41, { unit_of_measurement: "min" }]].forEach(([d, k, v, x]) => ent("n2", d, k, v, x));
   // update entity of the node: a new Proxmox VE release on pve, only other packages on srv2
   ent("n1", "update", "node_update", "on", { installed_version: "9.2.26", latest_version: "9.2.27" });
   ent("n2", "update", "node_update", "on", { installed_version: "9.2.26", latest_version: "9.2.26" });
@@ -73,7 +79,6 @@
   dev("c1", "Proxmox Cluster", "Cluster");
   [["sensor", "cluster_cpu_used", 31], ["sensor", "cluster_memory_used_perc", 59], ["sensor", "cluster_nodes_online", 2], ["binary_sensor", "quorate", "on"]].forEach(([d, k, v]) => ent("c1", d, k, v));
   // ZFS pools, Ceph, backup coverage, certificate and subscription (?calm=1: everything healthy)
-  const calm = !!q.get("calm");
   dev("z1", "ZFS pve: rpool", "ZFS", "n1"); dev("z2", "ZFS srv2: tank", "ZFS", "n2");
   [["z1", "ONLINE", 31, 1.8e12], ["z2", calm ? "ONLINE" : "DEGRADED", 64, 8e12]].forEach(([id, h, pct, size]) => {
     ent(id, "sensor", "zfs_health", h); ent(id, "sensor", "zfs_used_perc", pct); ent(id, "sensor", "zfs_free_perc", 100 - pct);

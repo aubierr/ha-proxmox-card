@@ -7,8 +7,8 @@ const src = readFileSync(new URL("../dist/proxmox-card.js", import.meta.url), "u
 const a = src.indexOf("const BYTES");
 const b = src.indexOf("/** Sparkline paths");
 if (a < 0 || b < 0) throw new Error("format helpers not found in dist/proxmox-card.js");
-const { BYTES, fmtScaled, fmtUsedTotal, unitFactor, nextNet, RATE_BYTES, RATE_BITS, SIZES, fitSlope, daysToFull, counterRates } = new Function(
-  `${src.slice(a, b)}; return { BYTES, fmtScaled, fmtUsedTotal, unitFactor, nextNet, RATE_BYTES, RATE_BITS, SIZES, fitSlope, daysToFull, counterRates };`)();
+const { BYTES, fmtScaled, fmtUsedTotal, unitFactor, nextNet, RATE_BYTES, RATE_BITS, SIZES, fitSlope, daysToFull, counterRates, durSeconds, fmtDur, vzGuests } = new Function(
+  `${src.slice(a, b)}; return { BYTES, fmtScaled, fmtUsedTotal, unitFactor, nextNet, RATE_BYTES, RATE_BITS, SIZES, fitSlope, daysToFull, counterRates, durSeconds, fmtDur, vzGuests };`)();
 
 // formatting, including the rounding boundaries
 assert.equal(fmtScaled(0, SIZES), "0 B");
@@ -62,4 +62,24 @@ assert.deepEqual(counterRates(ev, 0, 60e3, 3), [1000, 1500, null]); // 60 kB in 
 assert.deepEqual(counterRates([{ t: 200e3, v: 5 }], 0, 60e3, 2), [null, null]); // no data yet in the first buckets
 assert.deepEqual(counterRates(ev, 0, 60e3, 1), [1000]);
 
-console.log("✓ format, network rate, forecast and network curve checks passed");
+// backups: duration of the "Backup duration" entity, compact durations, guests of a vzdump run
+assert.equal(durSeconds(14.5, "min"), 870);
+assert.equal(durSeconds(2, "h"), 7200);
+assert.equal(durSeconds(30, undefined), 30);   // no unit: seconds, the integration's native unit
+assert.equal(durSeconds(5, "weeks"), null);    // unknown unit: nothing rather than a wrong value
+assert.equal(durSeconds(null, "min"), null);
+assert.equal(fmtDur(45), "45 s");
+assert.equal(fmtDur(12 * 60 + 20), "12 min");
+assert.equal(fmtDur(3600 + 5 * 60), "1 h 05");
+assert.equal(fmtDur(2 * 3600), "2 h");
+assert.equal(fmtDur(3600 + 59.8 * 60), "2 h");  // 1 h 59.8 min rounds up to the hour, not "1 h 60"
+assert.equal(fmtDur(3 * 86400 + 2 * 3600, "j"), "3 j 2 h");
+assert.equal(fmtDur(2 * 86400 + 23.8 * 3600, "d"), "3 d");
+assert.equal(fmtDur(-5), ""); assert.equal(fmtDur(NaN), "");
+assert.deepEqual(vzGuests("100,101"), ["100", "101"]);
+assert.deepEqual(vzGuests("104"), ["104"]);
+assert.equal(vzGuests(""), null);     // empty id: a job that backs up the whole node
+assert.equal(vzGuests(null), null);
+assert.equal(vzGuests("all"), null);
+
+console.log("✓ format, network rate, forecast, network curve and backup checks passed");

@@ -30,6 +30,7 @@ It is built on dougiteixeira's [**Proxmox VE Custom**](https://github.com/dougit
 - [Sizes, pressure and snapshots](#sizes-pressure-and-snapshots)
 - [Network in and out](#network-in-and-out)
 - [ZFS, Ceph, backups, certificate, subscription, replication and HA](#zfs-ceph-backups-certificate-subscription-replication-and-ha)
+- [Backups](#backups)
 - [Filtering and renaming guests](#filtering-and-renaming-guests)
 - [Single-guest card](#single-guest-card)
 - [Gauge thresholds](#gauge-thresholds)
@@ -55,6 +56,7 @@ It is built on dougiteixeira's [**Proxmox VE Custom**](https://github.com/dougit
 - **Guest sorting**: set in the configuration (criterion, direction, VM / LXC grouping and group order) and with buttons on the card (Type and Node to group, then ID / Name / Status / CPU / RAM; CPU and RAM put the busiest first; a second click on the active criterion reverses it). The choice made with the buttons lasts until the page is reloaded.
 - **Collapsible sections**: clicking a section title folds it (remembered in the browser); `collapsed` sets the default.
 - **Layout**: guests and disks switch to 2 columns when the card is wide (`guest_columns`), adjustable accent colour (`accent`), adjustable section order (`section_order`).
+- **Backups**: date, duration and verdict of each node's last backup, alert when it gets too old (the schedule may have stopped), backup in progress with its guests and duration (animated badge on those guests), a "Backups" section, and backups started by the card on the storage of your choice (see [Backups](#backups)).
 - **Fill forecast**: from the last 7 days of history, every storage, ZFS pool and Ceph that is filling up shows "full in ~23 d", with an alert pill as the date gets close.
 - **Search and "Problems" filter**: from 6 guests, a search field (name or ID) and a button that keeps only the guests with an alert.
 - **Guest detail**: the chevron next to the name unfolds its CPU, RAM and network curves (in / out, with the peak of the period) and its alerts spelled out.
@@ -157,6 +159,10 @@ show_temperature: true   # node CPU temperature (hardware sensors)
 show_forecast: true      # storage fill forecast
 show_filter_bar: true    # search and "Problems" filter (from 6 guests)
 compact: false           # compact mode
+show_backup_section: true   # "Backups" section
+backup:                  # backups started by the card ("⋯" menus)
+  storage: pbs           # Proxmox storage ID
+  mode: snapshot         # snapshot | suspend | stop
 network_mode: rate       # rate (per second) | total (since start)
 network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 columns when wide) | 1 | 2
@@ -182,6 +188,7 @@ thresholds:
   certificate: { warning: 30, critical: 7 }   # days before expiry
   cpu_temperature: { warning: 75, critical: 90 }   # °C
   forecast:    { warning: 30, critical: 7 }    # days before a storage is full
+  backup_age:  { warning: 26, critical: 50 }   # hours since a node's last backup
 ```
 
 | Option | Type | Default | Description |
@@ -220,6 +227,8 @@ thresholds:
 | `show_snapshots` | boolean | `true` | Snapshot count of the guest and "Create snapshot" button (second click to confirm) |
 | `show_forecast` | boolean | `true` | Fill forecast of storages, ZFS pools and Ceph: slope of the usage over 7 days of history, shown when the storage would be full within a year. Alert pill according to `thresholds.forecast` |
 | `show_filter_bar` | boolean | `true` | Search field (name or ID) and "Problems" button above the guests, from 6 guests. Escape clears the search |
+| `show_backup_section` | boolean | `true` | "Backups" section: last run of each node, run in progress, guests without backup (needs `show_backup`) |
+| `backup` | object | *(empty)* | `storage` (Proxmox storage ID) and `mode` (`snapshot`, `suspend`, `stop`): "Back up now" and "Back up all guests" then use the integration's `proxmoxve_custom.backup` action on this storage, see [Backups](#backups) |
 | `compact` | boolean | `false` | Compact mode: bars instead of rings on the nodes, no curves or secondary lines (network, sizes, host share) |
 | `show_temperature` | boolean | `true` | Node CPU temperature in the load / IO delay strip; the other temperature sensors on hover. Needs the integration's hardware sensors (PVE-mods and lm-sensors on the host) |
 | `show_host_share` | boolean | `true` | Share of the host's CPU and RAM used by each guest, under its gauges ("CPU used of host" and "Memory used of host" entities, disabled by default) |
@@ -277,6 +286,33 @@ The integration exposes two sensors per VM and container, **"Network in"** and *
 
 The "node ·" prefix is added to the certificate, subscription and replication pills when there are several nodes. Pills depend on `show_alerts`, tiles on `show_storage`.
 
+## Backups
+
+The integration reports, for each node, its **last finished backup run** (entities "Last backup", "Backup status" and "Backup duration", **disabled by default**) and the **run in progress** ("Backup running", enabled by default). The card uses them this way:
+
+| What | Shown as |
+|---|---|
+| Last run | In the node's strip: "Last backup · 14 min · OK"; on hover, Proxmox's verdict, the guests of the run and the user. Red when the run failed |
+| Run that failed | Red "node · backup failed (job errors)" pill |
+| Last run too old | Orange pill after 26 h, red after 50 h ("last backup 3 d 2 h ago", `thresholds.backup_age`): a schedule that stopped silently shows up here |
+| Run in progress | "backup running · 3 guests · 12 min" pill and an animated badge on each guest being backed up |
+| Guests no job covers | "2 guests without backup" pill and badge (optional cluster administration credentials of the integration) |
+| "Backups" section | One line per node (age, duration, guests, verdict, or the run in progress) and the list of guests without backup. Its place is set with `section_order`; `show_backup_section: false` removes it |
+
+### Starting a backup from the card
+
+The integration's "Back up now" and "Back up all" buttons only work when a backup storage is picked in the integration's options. With the card's `backup` option, the "⋯" menus start the backup themselves with the integration's `proxmoxve_custom.backup` action, on the storage you choose:
+
+```yaml
+backup:
+  storage: pbs        # Proxmox storage ID (Datacenter → Storage)
+  mode: snapshot      # snapshot (default, no downtime) | suspend | stop
+```
+
+A run already in progress is not started again (`skip_if_running`). A message at the top of the card says whether Proxmox accepted the backup or why it refused it (missing privilege, unknown storage…). The integration's user needs `VM.Backup` on the guests and `Datastore.AllocateSpace` on the storage. Also in the visual editor ("Backups started from the card").
+
+> The integration only knows the **last** run of each node, not a date per guest: a guest that was not part of that run has no reliable date, so the card shows none rather than a wrong one.
+
 ## Filtering and renaming guests
 
 ```yaml
@@ -322,6 +358,7 @@ It is the same tile as in the main card (gauges, network, badges, buttons and "�
 | `pressure` (guest pressure, in %) | 10 % | 30 % |
 | `cpu_temperature` (node CPU temperature) | 75 °C | 90 °C |
 | `forecast` (days before a storage is full at the pace of the last 7 days; lower = worse) | 30 days | 7 days |
+| `backup_age` (hours since a node's last finished backup) | 26 h | 50 h |
 | `certificate` (days before a node's certificate expires; lower = worse) | 30 days | 7 days (red too once expired) |
 
 You can override only some of the values; the others keep their default.
@@ -421,9 +458,9 @@ Test page parameters: `?lang=en` (language), `?theme=dark`, `?w=560` (card width
 The README screenshots (`docs/screenshots/`) are generated from this page with Edge or Chrome in headless mode:
 
 ```bash
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,2070 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,2070 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1885 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
 ```
 
 The window height (`--window-size`) must follow the card's height: adjust it when the card grows.

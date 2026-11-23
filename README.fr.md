@@ -30,6 +30,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - [Tailles, pression et instantanés](#tailles-pression-et-instantanés)
 - [Réseau entrant et sortant](#réseau-entrant-et-sortant)
 - [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-abonnement-réplication-et-ha)
+- [Sauvegardes](#sauvegardes)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Carte d'un seul invité](#carte-dun-seul-invité)
 - [Seuils des jauges](#seuils-des-jauges)
@@ -55,6 +56,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type et Nœud pour regrouper, puis ID / Nom / État / CPU / RAM ; CPU et RAM mettent les plus chargés en premier ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
 - **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
 - **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`), ordre des sections réglable (`section_order`).
+- **Sauvegardes** : date, durée et verdict de la dernière sauvegarde de chaque nœud, alerte quand elle devient trop ancienne (planification arrêtée), sauvegarde en cours avec ses invités et sa durée (badge animé sur ces invités), section « Sauvegardes », et sauvegardes lancées par la carte sur le stockage de votre choix (voir [Sauvegardes](#sauvegardes)).
 - **Prévision de remplissage** : à partir des 7 derniers jours d'historique, chaque stockage, pool ZFS et Ceph qui se remplit affiche « plein dans ~23 j », avec une pastille d'alerte à l'approche de l'échéance.
 - **Recherche et filtre « Problèmes »** : à partir de 6 invités, un champ de recherche (nom ou ID) et un bouton qui ne garde que les invités en alerte.
 - **Détail d'un invité** : le chevron à côté du nom déplie ses courbes CPU, RAM et réseau (reçu / envoyé, avec le débit maximal de la période) et la liste de ses alertes en clair.
@@ -157,6 +159,10 @@ show_temperature: true   # température CPU des nœuds (capteurs matériels)
 show_forecast: true      # prévision de remplissage des stockages
 show_filter_bar: true    # recherche et filtre « Problèmes » (à partir de 6 invités)
 compact: false           # mode compact
+show_backup_section: true   # section « Sauvegardes »
+backup:                  # sauvegardes lancées par la carte (menus « ⋯ »)
+  storage: pbs           # ID du stockage Proxmox
+  mode: snapshot         # snapshot | suspend | stop
 network_mode: rate       # rate (débit) | total (depuis le démarrage)
 network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
@@ -182,6 +188,7 @@ thresholds:
   certificate: { warning: 30, critical: 7 }   # jours avant l'expiration
   cpu_temperature: { warning: 75, critical: 90 }   # °C
   forecast:    { warning: 30, critical: 7 }    # jours avant qu'un stockage soit plein
+  backup_age:  { warning: 26, critical: 50 }   # heures depuis la dernière sauvegarde d'un nœud
 ```
 
 | Option | Type | Défaut | Description |
@@ -220,6 +227,8 @@ thresholds:
 | `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
 | `show_forecast` | booléen | `true` | Prévision de remplissage des stockages, pools ZFS et Ceph : pente de l'occupation sur 7 jours d'historique, affichée quand le stockage serait plein dans moins d'un an. Pastille d'alerte selon `thresholds.forecast` |
 | `show_filter_bar` | booléen | `true` | Champ de recherche (nom ou ID) et bouton « Problèmes » au-dessus des invités, à partir de 6 invités. Échap vide la recherche |
+| `show_backup_section` | booléen | `true` | Section « Sauvegardes » : dernière tâche de chaque nœud, sauvegarde en cours, invités sans sauvegarde (dépend de `show_backup`) |
+| `backup` | objet | *(vide)* | `storage` (ID du stockage Proxmox) et `mode` (`snapshot`, `suspend`, `stop`) : « Sauvegarder maintenant » et « Sauvegarder tous les invités » utilisent alors l'action `proxmoxve_custom.backup` de l'intégration sur ce stockage, voir [Sauvegardes](#sauvegardes) |
 | `compact` | booléen | `false` | Mode compact : barres au lieu des anneaux sur les nœuds, sans courbes ni lignes secondaires (réseau, tailles, part de l'hôte) |
 | `show_temperature` | booléen | `true` | Température CPU des nœuds, dans la bande charge / IO delay ; les autres capteurs de température au survol. Nécessite les capteurs matériels de l'intégration (PVE-mods et lm-sensors sur l'hôte) |
 | `show_host_share` | booléen | `true` | Part du CPU et de la RAM de l'hôte utilisée par chaque invité, sous ses jauges (entités « CPU used of host » et « Memory used of host », désactivées par défaut) |
@@ -276,6 +285,33 @@ L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau des
 
 Le préfixe « nœud · » s'ajoute aux pastilles de certificat, d'abonnement et de réplication quand il y a plusieurs nœuds. Les pastilles dépendent de `show_alerts`, les tuiles de `show_storage`.
 
+## Sauvegardes
+
+L'intégration indique, pour chaque nœud, sa **dernière tâche de sauvegarde terminée** (entités « Last backup », « Backup status » et « Backup duration », **désactivées par défaut**) et la **sauvegarde en cours** (« Backup running », active par défaut). La carte s'en sert ainsi :
+
+| Quoi | Affichage |
+|---|---|
+| Dernière tâche | Dans la bande du nœud : « Dernière sauvegarde · 14 min · OK » ; au survol, le verdict de Proxmox, les invités de la tâche et l'utilisateur. En rouge si elle a échoué |
+| Tâche en échec | Pastille rouge « nœud · sauvegarde en échec (job errors) » |
+| Dernière tâche trop ancienne | Pastille orange après 26 h, rouge après 50 h (« dernière sauvegarde il y a 3 j 2 h », `thresholds.backup_age`) : une planification arrêtée sans bruit se voit ici |
+| Sauvegarde en cours | Pastille « sauvegarde en cours · 3 invités · 12 min » et badge animé sur chaque invité en cours de sauvegarde |
+| Invités qu'aucune tâche ne couvre | Pastille « 2 invités sans sauvegarde » et badge (identifiants optionnels d'administration du cluster de l'intégration) |
+| Section « Sauvegardes » | Une ligne par nœud (ancienneté, durée, invités, verdict, ou la sauvegarde en cours) et la liste des invités sans sauvegarde. Sa place se règle avec `section_order` ; `show_backup_section: false` la retire |
+
+### Lancer une sauvegarde depuis la carte
+
+Les boutons « Back up now » et « Back up all » de l'intégration ne fonctionnent que si un stockage de sauvegarde est choisi dans ses options. Avec l'option `backup` de la carte, les menus « ⋯ » lancent eux-mêmes la sauvegarde avec l'action `proxmoxve_custom.backup` de l'intégration, sur le stockage de votre choix :
+
+```yaml
+backup:
+  storage: pbs        # ID du stockage Proxmox (Centre de données → Stockage)
+  mode: snapshot      # snapshot (par défaut, sans interruption) | suspend | stop
+```
+
+Une sauvegarde déjà en cours n'est pas relancée (`skip_if_running`). Un message en haut de la carte indique si Proxmox a accepté la sauvegarde ou pourquoi il l'a refusée (privilège manquant, stockage inconnu…). L'utilisateur de l'intégration doit avoir `VM.Backup` sur les invités et `Datastore.AllocateSpace` sur le stockage. Réglable aussi dans l'éditeur visuel (« Sauvegardes lancées depuis la carte »).
+
+> L'intégration ne connaît que la **dernière** tâche de chaque nœud, pas une date par invité : un invité qui ne faisait pas partie de cette tâche n'a pas de date fiable, la carte n'en affiche donc pas plutôt que d'en afficher une fausse.
+
 ## Filtrer et renommer les invités
 
 ```yaml
@@ -321,6 +357,7 @@ C'est la même tuile que dans la carte principale (jauges, réseau, badges, bout
 | `pressure` (pression des invités, en %) | 10 % | 30 % |
 | `cpu_temperature` (température CPU des nœuds) | 75 °C | 90 °C |
 | `forecast` (jours avant qu'un stockage soit plein, au rythme des 7 derniers jours ; plus bas = plus grave) | 30 jours | 7 jours |
+| `backup_age` (heures depuis la dernière sauvegarde terminée d'un nœud) | 26 h | 50 h |
 | `certificate` (jours avant l'expiration du certificat d'un nœud ; plus bas = plus grave) | 30 jours | 7 jours (rouge aussi une fois expiré) |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
@@ -420,9 +457,9 @@ Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (l
 Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
 
 ```bash
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,2070 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,2070 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1885 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
 ```
 
 La hauteur de la fenêtre (`--window-size`) doit suivre celle de la carte : à ajuster quand la carte grandit.
