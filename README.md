@@ -42,22 +42,22 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut, pool ZFS dégradé, Ceph en avertissement ou en erreur, invités sans sauvegarde, certificat bientôt expiré, abonnement non valide. Un clic sur une pastille ouvre l'entité concernée.
-- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système (1 min, et 5 / 15 min si ces capteurs sont activés), l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
-- **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, part de l'hôte utilisée (« 3,9 % de l'hôte »), et badges (verrouillé, agent invité injoignable, problème signalé, réplication en échec).
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système (1 min, et 5 / 15 min si ces capteurs sont activés), l'IO delay (orange / rouge selon `thresholds.io`), la température du CPU (capteurs matériels, selon `thresholds.cpu_temperature`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
+- **Liste des invités** (VM et LXC) : statut, nom, numéro, nœud (sur un cluster), adresse IP, uptime, jauges CPU, RAM et disque, part de l'hôte utilisée (« 3,9 % de l'hôte »), et badges (verrouillé, agent invité injoignable, problème signalé, réplication en échec).
 - **Tailles réelles** : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités (affichés, ou au survol).
 - **Pression** : badge orange ou rouge sur un invité dont le CPU, la mémoire ou les E/S sont saturés (indicateurs PSI de Proxmox).
 - **Instantanés** : nombre d'instantanés de chaque invité et bouton pour en créer un (avec confirmation).
 - **Réseau par invité** : débit entrant et sortant (ou total depuis le démarrage) sous le nom de chaque invité qui tourne, en octets ou en bits par seconde.
-- **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type pour regrouper, puis ID / Nom / État ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
+- **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type et Nœud pour regrouper, puis ID / Nom / État / CPU / RAM ; CPU et RAM mettent les plus chargés en premier ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
 - **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
-- **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`).
+- **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`), ordre des sections réglable (`section_order`).
 - **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison.
 - **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif, plus les **pools ZFS** (état `ONLINE`, `DEGRADED`…) et **Ceph** (santé et occupation du cluster).
 - **Disques physiques** : santé SMART, température, usure, heures de fonctionnement, cycles d'alimentation (↻) et coupures brutales (⚡).
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées ; menu « ⋯ » pour les autres actions des invités (suspendre, reprendre, veille prolongée, réinitialiser, sauvegarder, déverrouiller), des nœuds (démarrer / arrêter / suspendre / sauvegarder tous les invités, redémarrer, éteindre, Wake-on-LAN) et du cluster (armer / désarmer la HA).
-- **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
+- **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité, ou une autre action avec `tap_action` (naviguer vers un tableau de bord, ouvrir une URL…). Les menus « ⋯ » se ferment avec Échap ou par un clic à côté.
 - **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
 - **Éditeur visuel** intégré, avec des messages d'aide (combien d'invités ont des boutons, combien de stockages et de disques sont détectés) ; l'éditeur et l'interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
 - Respecte `prefers-reduced-motion`.
@@ -128,9 +128,10 @@ show_swap: true
 show_load: true
 show_version: true
 show_sort: true
-sort: id                 # id | name | status
+sort: id                 # id | name | status | cpu | mem
 sort_dir: asc            # asc | desc
 group_by_type: false     # true = VM puis LXC (ou l'inverse avec type_order)
+group_by_node: false     # true = invités regroupés par nœud (clusters)
 type_order: vm_first     # vm_first | lxc_first
 show_cluster: true       # résumé du cluster à partir de 2 nœuds
 show_history: true       # courbes d'historique CPU / RAM des nœuds
@@ -141,10 +142,15 @@ show_sizes: true         # tailles (libre / total, utilisé / total)
 show_pressure: true      # badge de pression CPU / mémoire / E/S
 show_snapshots: true     # nombre d'instantanés et bouton « créer »
 show_host_share: true    # part de l'hôte utilisée par chaque invité
+show_temperature: true   # température CPU des nœuds (capteurs matériels)
 network_mode: rate       # rate (débit) | total (depuis le démarrage)
 network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
 collapsed: [disks]       # sections repliées par défaut : nodes, guests, storage, disks
+section_order: [guests, nodes]   # ces sections d'abord, les autres ensuite
+tap_action:              # action au clic sur une tuile (par défaut : fiche de l'entité)
+  action: navigate
+  navigation_path: /tableau-de-bord/proxmox
 accent: "#1e88e5"         # couleur d'accent (n'importe quelle couleur CSS)
 exclude: [openwrt, "120"]   # masquer ces invités (ID ou nom)
 # include: [100, docker]    # ou n'afficher que ceux-là
@@ -160,6 +166,7 @@ thresholds:
   io:          { warning: 5,  critical: 15 }
   pressure:    { warning: 10, critical: 30 }
   certificate: { warning: 30, critical: 7 }   # jours avant l'expiration
+  cpu_temperature: { warning: 75, critical: 90 }   # °C
 ```
 
 | Option | Type | Défaut | Description |
@@ -181,8 +188,9 @@ thresholds:
 | `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
 | `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds, avec la nouvelle version disponible (« PVE 9.2.26 → 9.2.27 ») |
 | `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
-| `sort` | texte | `id` | Critère de tri des invités : `id`, `name` ou `status` (actifs d'abord) |
+| `sort` | texte | `id` | Critère de tri des invités : `id`, `name`, `status` (actifs d'abord), `cpu` ou `mem` (les plus chargés d'abord, invités arrêtés à la fin) |
 | `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
+| `group_by_node` | booléen | `false` | Regrouper les invités par nœud, avec un intertitre par nœud (clusters de 2 nœuds ou plus). Sans regroupement, le nœud s'affiche dans la ligne de détail de chaque invité |
 | `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
 | `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
 | `show_cluster` | booléen | `true` | Tuile de résumé du cluster (affichée à partir de 2 nœuds) |
@@ -195,14 +203,17 @@ thresholds:
 | `show_sizes` | booléen | `true` | Tailles réelles : « 660 GB libres / 2,00 TB » sur les stockages, « 19,5 / 32 GB » sous les jauges des nœuds et sous les barres des invités |
 | `show_pressure` | booléen | `true` | Badge de pression (CPU, mémoire ou E/S) sur les invités dont l'indicateur dépasse `thresholds.pressure` |
 | `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
+| `show_temperature` | booléen | `true` | Température CPU des nœuds, dans la bande charge / IO delay ; les autres capteurs de température au survol. Nécessite les capteurs matériels de l'intégration (PVE-mods et lm-sensors sur l'hôte) |
 | `show_host_share` | booléen | `true` | Part du CPU et de la RAM de l'hôte utilisée par chaque invité, sous ses jauges (entités « CPU used of host » et « Memory used of host », désactivées par défaut) |
 | `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
 | `collapsed` | liste | *(vide)* | Sections repliées par défaut : `nodes`, `guests`, `storage`, `disks` |
+| `section_order` | liste | *(vide)* | Ordre des sections : celles de la liste d'abord, les autres ensuite dans l'ordre par défaut (nœuds, invités, stockages, disques). Pour masquer une section, utilisez `show_*` |
+| `tap_action` | action | fiche de l'entité | Action au clic sur une tuile (nœud, invité, stockage, disque) : action standard de Home Assistant (`navigate`, `url`, `perform-action`, `none`…). Les pastilles (alertes, version, HA) ouvrent toujours leur entité |
 | `accent` | texte ou RVB | orange Proxmox | Couleur d'accent : couleur CSS (`"#1e88e5"`, `teal`…) ou liste `[r, g, b]` du sélecteur de couleur |
 | `include` | liste | *(vide)* | N'afficher que ces invités (ID ou nom). Vide = tous |
 | `exclude` | liste | *(vide)* | Masquer ces invités (ID ou nom) |
 | `guests` | objet | *(vide)* | Nom (`name`) et icône (`icon`) personnalisés par invité, voir ci-dessous (YAML uniquement) |
-| `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge |
+| `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge, réglables aussi dans l'éditeur visuel (section « Seuils ») |
 | `language` | texte | `auto` | `auto` (langue de Home Assistant) ou un code : `en`, `fr`, `de`, `es`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `nb`, `fi`, `ru`, `uk`, `tr`, `ro`, `hu`, `ja`, `zh` |
 
 ## Historique, sauvegarde et cluster
@@ -279,6 +290,7 @@ guests:
 | `wear` (usure des disques) | 70 % | 90 % |
 | `io` (IO delay des nœuds) | 5 % | 15 % |
 | `pressure` (pression des invités, en %) | 10 % | 30 % |
+| `cpu_temperature` (température CPU des nœuds) | 75 °C | 90 °C |
 | `certificate` (jours avant l'expiration du certificat d'un nœud ; plus bas = plus grave) | 30 jours | 7 jours (rouge aussi une fois expiré) |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
@@ -289,8 +301,8 @@ La carte parcourt les entités dont la plateforme est `proxmoxve_custom`, les re
 
 | Appareil | Rôles lus |
 |---|---|
-| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 / 5 / 15 min, IO delay, version, réplication en échec, boutons du « ⋯ » (start_all, stop_all, suspend_all, backup_all, reboot, shutdown, wakeonlan), expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
-| **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, part de l'hôte (CPU / mémoire), boutons start / shutdown / reboot / stop / snapshot et ceux du « ⋯ » (suspend, resume, hibernate, reset, backup, unlock) |
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 / 5 / 15 min, IO delay, températures (capteurs matériels, sans clé de traduction), version, réplication en échec, boutons du « ⋯ » (start_all, stop_all, suspend_all, backup_all, reboot, shutdown, wakeonlan), expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
+| **VM (QEMU)** et **conteneur (LXC)** | statut (détaillé si « Status » brut existe), nœud actuel, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, part de l'hôte (CPU / mémoire), boutons start / shutdown / reboot / stop / snapshot et ceux du « ⋯ » (suspend, resume, hibernate, reset, backup, unlock) |
 | **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
 | **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement, cycles d'alimentation, coupures brutales |
 | **Pool ZFS** (`ZFS nœud: pool`) | état, occupation (%), taille, utilisé |
@@ -360,9 +372,9 @@ Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (l
 Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
 
 ```bash
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1995 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1765 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1765 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1700 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
 ```
 
 La hauteur de la fenêtre (`--window-size`) doit suivre celle de la carte : à ajuster quand la carte grandit.
@@ -373,7 +385,8 @@ Le workflow [`validate.yml`](.github/workflows/validate.yml) s'exécute à chaqu
 
 - **HACS** : validation officielle du dépôt ([hacs/action](https://github.com/hacs/action)) ;
 - **JavaScript** : vérification de la syntaxe du module ;
-- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes ; `node test/check-format.mjs` vérifie le formatage des tailles et le calcul du débit réseau.
+- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes , et les formes du pluriel (« 1 tâche en échec », « 5 nieudanych zadań ») ; `node test/check-format.mjs` vérifie le formatage des tailles et le calcul du débit réseau ;
+- **Entités** : `node test/check-roles.mjs` vérifie le rôle attribué à chaque entité de l'intégration (120 clés de traduction). Quand l'intégration ajoute ou renomme une entité, ajoutez-la à la table du test.
 
 ## Remerciements
 

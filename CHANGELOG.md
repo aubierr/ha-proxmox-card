@@ -1,6 +1,20 @@
 # Changelog
 
-## 1.3.1
+## 1.4.0
+
+- Température CPU des nœuds (`show_temperature`, `thresholds.cpu_temperature`) dans la bande charge / IO delay, à partir des capteurs matériels de l'intégration (PVE-mods) ; les autres températures au survol.
+- Nœud de chaque invité : affiché dans la ligne de détail sur un cluster (il suit les migrations grâce au capteur « Node »), et regroupement par nœud (`group_by_node`, bouton « Nœud »).
+- Tri des invités par CPU ou par RAM (les plus chargés d'abord, invités arrêtés à la fin), dans la configuration et sur la carte.
+- Menus « ⋯ » : fermeture avec Échap ou par un clic à côté.
+- Éditeur visuel : section « Seuils » (tous les seuils, seules les valeurs modifiées sont écrites dans le YAML), action au clic et ordre des sections.
+- Action au clic (`tap_action`) : action standard de Home Assistant sur les tuiles (naviguer, ouvrir une URL…).
+- Ordre des sections (`section_order`).
+- Pluriels : « 1 tâche en échec » / « 2 tâches en échec », avec les formes propres à chaque langue (polonais, tchèque, russe, ukrainien, roumain…).
+- Statut des invités : l'état détaillé (en pause, suspendu…) est utilisé quand il existe, ce qui fiabilise le bouton « Reprendre ».
+- Corrections : les capteurs « Disk RPM » et « Disk size » des disques physiques ne sont plus pris pour l'espace disque utilisé ; les capteurs matériels ne peuvent plus être pris pour l'usage CPU.
+- Tests : nouveau `test/check-roles.mjs` (rôle de chaque entité de l'intégration) dans la validation GitHub ; `check-i18n.mjs` vérifie aussi les pluriels.
+
+## 1.3.1 (non publiée, incluse dans la 1.4.0)
 
 - Pools ZFS et Ceph : le nom n'est plus tronqué sur les cartes larges ; l'étiquette « ZFS » (avec le nœud quand il y en a plusieurs) ou « Cluster » passe sur une ligne à part, sous la barre.
 - Invités : la taille et la part de l'hôte s'affichent sur deux lignes sous les jauges, au lieu d'une ligne tronquée.

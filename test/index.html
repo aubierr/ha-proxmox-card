@@ -104,7 +104,9 @@
     ["l2", "LXC pihole (102)", "LXC", "running", 1, 12, 23, "192.168.1.53"], ["l3", "LXC immich (103)", "LXC", "running", 6, 71, 58, "192.168.1.54"],
   ];
   for (const [id, name, model, st, cpu, mem, disk, ip] of guests) {
-    dev(id, name, model, "n1"); ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
+    const host = id === "q2" || id === "l3" ? "n2" : "n1"; // nas and immich run on srv2
+    dev(id, name, model, host); ent(id, "sensor", "node", host === "n2" ? "srv2" : "pve");
+    ent(id, "binary_sensor", "status", st === "running" ? "on" : "off"); ent(id, "sensor", "cpu_used", cpu); ent(id, "sensor", "memory_used_perc", mem);
     ent(id, "sensor", "disk_used_perc", st === "running" ? disk : "unknown"); ent(id, "sensor", "ip_address", ip || "unknown"); ent(id, "sensor", "uptime", ago(5.2));
     ent(id, "binary_sensor", "locked", "off");
     if (st === "running") {
@@ -130,6 +132,11 @@
   if (!calm) states["binary_sensor.l2_locked"].state = "on";
   ["start_all", "stop_all", "suspend_all", "backup_all", "shutdown", "reboot", "wakeonlan"].forEach((k) => ent("n1", "button", k, "unknown"));
   ent("n1", "sensor", "load_5m", 0.52); ent("n1", "sensor", "load_15m", 0.6);
+  // hardware sensors (PVE-mods): diagnostic, no translation key, named by the integration
+  const hw = (node, key, name, v) => { const id = `sensor.${node}_${key}`; entities[id] = { entity_id: id, platform: entities["binary_sensor.n1_status"].platform, device_id: node, entity_category: "diagnostic" };
+    states[id] = { entity_id: id, state: String(v), attributes: { device_class: "temperature", unit_of_measurement: "°C", friendly_name: `${devices[node].name} ${name}` }, last_updated: new Date().toISOString() }; };
+  hw("n1", "cpu_package_temperature", "CPU package temperature", 54); hw("n1", "nvme_temperature", "NVMe temperature", 41);
+  hw("n2", "cpu_control_temperature", "CPU control temperature", calm ? 61 : 82);
   ent("n1", "binary_sensor", "replication_failing", calm ? "off" : "on", calm ? {} : { failing_jobs: [{ id: "104-0", guest: 104, guest_type: "qemu", target: "srv2", failures: 3, error: "no space left on device" }], jobs: 2 });
   ent("c1", "sensor", "ha_armed_state", calm ? "armed" : "disarmed", { resource_mode: "freeze" });
   ent("c1", "sensor", "ha_resources_error", calm ? 0 : 1, { ha_resources_error_list: calm ? [] : ["vm:104"] });

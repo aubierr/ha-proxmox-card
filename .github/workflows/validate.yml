@@ -35,3 +35,5 @@ jobs:
         run: node test/check-i18n.mjs
       - name: Check size formatting and network rate
         run: node test/check-format.mjs
+      - name: Check the entity classification
+        run: node test/check-roles.mjs
