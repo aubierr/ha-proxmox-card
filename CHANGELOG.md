@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0
+
+- Prévision de remplissage (`show_forecast`, `thresholds.forecast`) : à partir des 7 derniers jours d'historique, chaque stockage, pool ZFS et Ceph qui se remplit affiche « plein dans ~23 j » ; pastille orange à 30 jours, rouge à 7 jours.
+- Invités : champ de recherche (nom ou ID) et filtre « Problèmes » qui ne garde que les invités en alerte (`show_filter_bar`, à partir de 6 invités). Échap vide la recherche.
+- Détail dépliable d'un invité (chevron à côté du nom) : courbes CPU et RAM, et liste de ses alertes en clair.
+- Nouvelle carte `custom:proxmox-guest-card` pour un seul invité (`guest: 104`), avec son éditeur visuel.
+- Mode compact (`compact`) : barres au lieu des anneaux, sans courbes ni lignes secondaires.
+- Accessibilité : tuiles et pastilles atteignables au clavier (Tab, puis Entrée ou Espace), libellé lu par les lecteurs d'écran pour les boutons à icône, contour de focus visible.
+- Éditeur visuel : noms et icônes des invités (option `guests:`), seuil de la prévision.
+- Projet : `test/check-version.mjs` vérifie que la carte, le changelog et le tag annoncent la même version ; pousser un tag `vX.Y.Z` publie la release GitHub avec les notes du changelog (`.github/workflows/release.yml`).
+
 ## 1.4.0
 
 - Température CPU des nœuds (`show_temperature`, `thresholds.cpu_temperature`) dans la bande charge / IO delay, à partir des capteurs matériels de l'intégration (PVE-mods) ; les autres températures au survol.

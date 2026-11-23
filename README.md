@@ -29,6 +29,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - [Réseau entrant et sortant](#réseau-entrant-et-sortant)
 - [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-abonnement-réplication-et-ha)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
+- [Carte d'un seul invité](#carte-dun-seul-invité)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
 - [Boutons d'action](#boutons-daction)
@@ -51,6 +52,12 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type et Nœud pour regrouper, puis ID / Nom / État / CPU / RAM ; CPU et RAM mettent les plus chargés en premier ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
 - **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
 - **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`), ordre des sections réglable (`section_order`).
+- **Prévision de remplissage** : à partir des 7 derniers jours d'historique, chaque stockage, pool ZFS et Ceph qui se remplit affiche « plein dans ~23 j », avec une pastille d'alerte à l'approche de l'échéance.
+- **Recherche et filtre « Problèmes »** : à partir de 6 invités, un champ de recherche (nom ou ID) et un bouton qui ne garde que les invités en alerte.
+- **Détail d'un invité** : le chevron à côté du nom déplie ses courbes CPU et RAM et la liste de ses alertes en clair.
+- **Carte d'un seul invité** (`custom:proxmox-guest-card`) : la tuile d'une VM ou d'un conteneur, à placer n'importe où (voir plus bas).
+- **Mode compact** (`compact`) : barres au lieu des anneaux, sans courbes, pour les petits tableaux de bord.
+- **Accessible au clavier** : tuiles et pastilles atteignables avec Tab et ouvertes avec Entrée ; boutons nommés pour les lecteurs d'écran.
 - **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison.
 - **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif, plus les **pools ZFS** (état `ONLINE`, `DEGRADED`…) et **Ceph** (santé et occupation du cluster).
@@ -143,6 +150,9 @@ show_pressure: true      # badge de pression CPU / mémoire / E/S
 show_snapshots: true     # nombre d'instantanés et bouton « créer »
 show_host_share: true    # part de l'hôte utilisée par chaque invité
 show_temperature: true   # température CPU des nœuds (capteurs matériels)
+show_forecast: true      # prévision de remplissage des stockages
+show_filter_bar: true    # recherche et filtre « Problèmes » (à partir de 6 invités)
+compact: false           # mode compact
 network_mode: rate       # rate (débit) | total (depuis le démarrage)
 network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
@@ -167,6 +177,7 @@ thresholds:
   pressure:    { warning: 10, critical: 30 }
   certificate: { warning: 30, critical: 7 }   # jours avant l'expiration
   cpu_temperature: { warning: 75, critical: 90 }   # °C
+  forecast:    { warning: 30, critical: 7 }    # jours avant qu'un stockage soit plein
 ```
 
 | Option | Type | Défaut | Description |
@@ -203,6 +214,9 @@ thresholds:
 | `show_sizes` | booléen | `true` | Tailles réelles : « 660 GB libres / 2,00 TB » sur les stockages, « 19,5 / 32 GB » sous les jauges des nœuds et sous les barres des invités |
 | `show_pressure` | booléen | `true` | Badge de pression (CPU, mémoire ou E/S) sur les invités dont l'indicateur dépasse `thresholds.pressure` |
 | `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
+| `show_forecast` | booléen | `true` | Prévision de remplissage des stockages, pools ZFS et Ceph : pente de l'occupation sur 7 jours d'historique, affichée quand le stockage serait plein dans moins d'un an. Pastille d'alerte selon `thresholds.forecast` |
+| `show_filter_bar` | booléen | `true` | Champ de recherche (nom ou ID) et bouton « Problèmes » au-dessus des invités, à partir de 6 invités. Échap vide la recherche |
+| `compact` | booléen | `false` | Mode compact : barres au lieu des anneaux sur les nœuds, sans courbes ni lignes secondaires (réseau, tailles, part de l'hôte) |
 | `show_temperature` | booléen | `true` | Température CPU des nœuds, dans la bande charge / IO delay ; les autres capteurs de température au survol. Nécessite les capteurs matériels de l'intégration (PVE-mods et lm-sensors sur l'hôte) |
 | `show_host_share` | booléen | `true` | Part du CPU et de la RAM de l'hôte utilisée par chaque invité, sous ses jauges (entités « CPU used of host » et « Memory used of host », désactivées par défaut) |
 | `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
@@ -276,8 +290,20 @@ guests:
 
 - Une entrée **numérique** correspond à l'ID exact ; une entrée **texte** correspond au nom exact, ou à une partie du nom (sans tenir compte de la casse).
 - `include` et `exclude` s'appliquent partout : liste, compteurs de l'en-tête et tri. Si les deux sont renseignés, `exclude` l'emporte.
-- `include` et `exclude` se règlent aussi dans l'éditeur visuel (section « Filtres »). Le renommage et les icônes (`guests`) se font en YAML.
+- `include` et `exclude` se règlent aussi dans l'éditeur visuel (section « Filtres »). Le renommage et les icônes (`guests`) se règlent dans la section « Noms et icônes des invités » de l'éditeur (une ligne par invité détecté, clé = ID), ou en YAML.
 - Le tri par nom utilise le nom affiché, donc le nom personnalisé.
+
+## Carte d'un seul invité
+
+Pour afficher une seule VM ou un seul conteneur ailleurs dans un tableau de bord, ajoutez « Proxmox Guest Card » depuis le sélecteur de cartes, ou en YAML :
+
+```yaml
+type: custom:proxmox-guest-card
+guest: 104            # ID ou nom de l'invité
+show_details: true    # courbes CPU / RAM et alertes dépliées (par défaut)
+```
+
+C'est la même tuile que dans la carte principale (jauges, réseau, badges, boutons et menu « ⋯ »), sans en-tête ni section. Les options d'affichage de la carte principale s'appliquent (`show_actions`, `show_history`, `show_network`, `show_ip`, `show_badges`, `show_snapshots`, `show_host_share`, `tap_action`, `thresholds`, `language`…), et l'éditeur visuel propose la liste des invités détectés.
 
 ## Seuils des jauges
 
@@ -291,6 +317,7 @@ guests:
 | `io` (IO delay des nœuds) | 5 % | 15 % |
 | `pressure` (pression des invités, en %) | 10 % | 30 % |
 | `cpu_temperature` (température CPU des nœuds) | 75 °C | 90 °C |
+| `forecast` (jours avant qu'un stockage soit plein, au rythme des 7 derniers jours ; plus bas = plus grave) | 30 jours | 7 jours |
 | `certificate` (jours avant l'expiration du certificat d'un nœud ; plus bas = plus grave) | 30 jours | 7 jours (rouge aussi une fois expiré) |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
@@ -372,9 +399,9 @@ Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (l
 Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
 
 ```bash
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1765 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1765 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1700 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
 ```
 
 La hauteur de la fenêtre (`--window-size`) doit suivre celle de la carte : à ajuster quand la carte grandit.
@@ -386,7 +413,14 @@ Le workflow [`validate.yml`](.github/workflows/validate.yml) s'exécute à chaqu
 - **HACS** : validation officielle du dépôt ([hacs/action](https://github.com/hacs/action)) ;
 - **JavaScript** : vérification de la syntaxe du module ;
 - **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes , et les formes du pluriel (« 1 tâche en échec », « 5 nieudanych zadań ») ; `node test/check-format.mjs` vérifie le formatage des tailles et le calcul du débit réseau ;
-- **Entités** : `node test/check-roles.mjs` vérifie le rôle attribué à chaque entité de l'intégration (120 clés de traduction). Quand l'intégration ajoute ou renomme une entité, ajoutez-la à la table du test.
+- **Entités** : `node test/check-roles.mjs` vérifie le rôle attribué à chaque entité de l'intégration (120 clés de traduction). Quand l'intégration ajoute ou renomme une entité, ajoutez-la à la table du test ;
+- **Version** : `node test/check-version.mjs` vérifie que la carte (`VERSION`), la première entrée du changelog et, sur un tag, le tag annoncent la même version.
+
+### Publier une version
+
+1. Mettre à jour `VERSION` dans [`dist/proxmox-card.js`](dist/proxmox-card.js) et ajouter l'entrée `## x.y.z` en tête de [`CHANGELOG.md`](CHANGELOG.md).
+2. Pousser sur `main`, puis pousser le tag : `git tag vx.y.z && git push origin vx.y.z`.
+3. Le workflow [`release.yml`](.github/workflows/release.yml) relance les vérifications et publie la release GitHub avec les notes de cette version du changelog ; HACS la propose ensuite.
 
 ## Remerciements
 

@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>proxmox-card test</title>
 <!--
   Page de test avec un faux objet `hass` (données fictives).
-  Paramètres : ?lang=fr|en|de…  ?theme=dark  ?w=420 (largeur de la carte en px)  ?single=1 (une seule carte)  ?shot=1 (sans bouton, pour les captures)  ?cfg={"node":"pve"} (configuration JSON ajoutée à la carte)
+  Paramètres : ?lang=fr|en|de…  ?theme=dark  ?w=420 (largeur de la carte en px)  ?single=1 (une seule carte)  ?shot=1 (sans bouton, pour les captures)  ?cfg={"node":"pve"} (configuration JSON ajoutée à la carte)  ?guest=104 (carte d'un seul invité)  ?calm=1 (aucune alerte)  ?legacy=1 (ancien domaine)
   Les icônes MDI sont chargées depuis jsDelivr (il faut une connexion Internet).
 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
@@ -34,7 +34,7 @@
   });
 </script>
 <script type="module">
-  import { ProxmoxCard } from "../dist/proxmox-card.js";
+  import { ProxmoxCard, ProxmoxGuestCard } from "../dist/proxmox-card.js";
   const q = new URLSearchParams(location.search);
   if (q.get("theme") === "dark") document.body.classList.add("dark");
   if (q.get("w")) document.querySelector(".wrap").style.maxWidth = q.get("w") + "px";
@@ -153,6 +153,13 @@
           out[id] = Array.from({ length: 21 }, (_, i) => ({ lu: (last - (20 - i) * 60e3) / 1000, s: String(mb - (netRates[id] * (20 - i) * 60) / 1e6) }));
           continue;
         }
+        // storages filling up (% per day), for the fill forecast: data and Ceph soon full, local-lvm in a few months
+        const fill = calm ? null : { "sensor.s3_disk_used_perc": 0.6, "sensor.s2_disk_used_perc": 0.4, "sensor.c1_ceph_used_perc": 2 }[id];
+        if (fill !== undefined && fill !== null) {
+          const now = Number(states[id].state);
+          out[id] = Array.from({ length: 169 }, (_, i) => { const t = start + ((end - start) * i) / 168; return { lu: t / 1000, s: String(now - fill * (end - t) / 864e5 + 0.3 * Math.sin(i)) }; });
+          continue;
+        }
         const base = Number(states[id].state) || 30;
         out[id] = Array.from({ length: 300 }, (_, i) => ({ lu: (start + ((end - start) * i) / 299) / 1000, s: String(Math.max(2, Math.min(98, base + 22 * Math.sin(i / 22 + id.length) + 9 * Math.sin(i / 5)))) }));
       }
@@ -163,6 +170,8 @@
   const extra = q.get("cfg") ? JSON.parse(q.get("cfg")) : {}; // e.g. ?cfg={"node":"pve","accent":"#1e88e5"}
   for (const [sel, cfg] of [["a", { title: "Proxmox", ...extra }], ["b", { title: "Proxmox", ...narrow }]]) {
     if (!document.getElementById(sel)) continue;
-    const c = new ProxmoxCard(); c.setConfig(cfg); c.hass = window.__hass; document.getElementById(sel).append(c);
+    // ?guest=104: the single-guest card instead of the full card
+    const c = q.get("guest") ? new ProxmoxGuestCard() : new ProxmoxCard();
+    c.setConfig(q.get("guest") ? { guest: q.get("guest"), ...extra } : cfg); c.hass = window.__hass; document.getElementById(sel).append(c);
   }
 </script>

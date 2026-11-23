@@ -37,3 +37,5 @@ jobs:
         run: node test/check-format.mjs
       - name: Check the entity classification
         run: node test/check-roles.mjs
+      - name: Check that the card, the changelog and the tag agree on the version
+        run: node test/check-version.mjs
