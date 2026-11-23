@@ -27,7 +27,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - [Historique, sauvegarde et cluster](#historique-sauvegarde-et-cluster)
 - [Tailles, pression et instantanés](#tailles-pression-et-instantanés)
 - [Réseau entrant et sortant](#réseau-entrant-et-sortant)
-- [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-et-abonnement)
+- [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-abonnement-réplication-et-ha)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
@@ -42,8 +42,8 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut, pool ZFS dégradé, Ceph en avertissement ou en erreur, invités sans sauvegarde, certificat bientôt expiré, abonnement non valide. Un clic sur une pastille ouvre l'entité concernée.
-- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système, l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
-- **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système (1 min, et 5 / 15 min si ces capteurs sont activés), l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
+- **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, part de l'hôte utilisée (« 3,9 % de l'hôte »), et badges (verrouillé, agent invité injoignable, problème signalé, réplication en échec).
 - **Tailles réelles** : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités (affichés, ou au survol).
 - **Pression** : badge orange ou rouge sur un invité dont le CPU, la mémoire ou les E/S sont saturés (indicateurs PSI de Proxmox).
 - **Instantanés** : nombre d'instantanés de chaque invité et bouton pour en créer un (avec confirmation).
@@ -54,9 +54,9 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison.
 - **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
 - **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif, plus les **pools ZFS** (état `ONLINE`, `DEGRADED`…) et **Ceph** (santé et occupation du cluster).
-- **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
+- **Disques physiques** : santé SMART, température, usure, heures de fonctionnement, cycles d'alimentation (↻) et coupures brutales (⚡).
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
-- **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
+- **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées ; menu « ⋯ » pour les autres actions des invités (suspendre, reprendre, veille prolongée, réinitialiser, sauvegarder, déverrouiller), des nœuds (démarrer / arrêter / suspendre / sauvegarder tous les invités, redémarrer, éteindre, Wake-on-LAN) et du cluster (armer / désarmer la HA).
 - **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité.
 - **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
 - **Éditeur visuel** intégré, avec des messages d'aide (combien d'invités ont des boutons, combien de stockages et de disques sont détectés) ; l'éditeur et l'interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
@@ -140,6 +140,7 @@ show_network: true       # réseau entrant / sortant de chaque invité
 show_sizes: true         # tailles (libre / total, utilisé / total)
 show_pressure: true      # badge de pression CPU / mémoire / E/S
 show_snapshots: true     # nombre d'instantanés et bouton « créer »
+show_host_share: true    # part de l'hôte utilisée par chaque invité
 network_mode: rate       # rate (débit) | total (depuis le démarrage)
 network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
 guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
@@ -194,6 +195,7 @@ thresholds:
 | `show_sizes` | booléen | `true` | Tailles réelles : « 660 GB libres / 2,00 TB » sur les stockages, « 19,5 / 32 GB » sous les jauges des nœuds et sous les barres des invités |
 | `show_pressure` | booléen | `true` | Badge de pression (CPU, mémoire ou E/S) sur les invités dont l'indicateur dépasse `thresholds.pressure` |
 | `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
+| `show_host_share` | booléen | `true` | Part du CPU et de la RAM de l'hôte utilisée par chaque invité, sous ses jauges (entités « CPU used of host » et « Memory used of host », désactivées par défaut) |
 | `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
 | `collapsed` | liste | *(vide)* | Sections repliées par défaut : `nodes`, `guests`, `storage`, `disks` |
 | `accent` | texte ou RVB | orange Proxmox | Couleur d'accent : couleur CSS (`"#1e88e5"`, `teal`…) ou liste `[r, g, b]` du sélecteur de couleur |
@@ -231,7 +233,7 @@ L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau des
 - `network_unit: bits` convertit les débits en bits par seconde (utile pour comparer à un débit de box ou de lien).
 - La ligne n'apparaît que pour les invités qui tournent et dont les capteurs sont activés ; l'éditeur indique quand aucun invité n'en a. `show_network: false` la retire.
 
-## ZFS, Ceph, sauvegardes, certificat et abonnement
+## ZFS, Ceph, sauvegardes, certificat, abonnement, réplication et HA
 
 | Information | Entité de l'intégration | Affichage |
 |---|---|---|
@@ -241,7 +243,10 @@ L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau des
 | **Certificat** | « Certificate expires » du nœud, **désactivée par défaut** | Pastille orange à 30 jours de l'expiration, rouge à 7 jours ou une fois expiré (`thresholds.certificate`) |
 | **Abonnement** | « Subscription » du nœud, **désactivée par défaut** | Pastille rouge quand l'abonnement est expiré, invalide ou suspendu (rien sans abonnement) |
 
-Le préfixe « nœud · » s'ajoute aux pastilles de certificat et d'abonnement quand il y a plusieurs nœuds. Les pastilles dépendent de `show_alerts`, les tuiles de `show_storage`.
+| **Réplication** | « Replication failing » du nœud, **désactivée par défaut** | Pastille rouge « réplication en échec » (tâches et erreur au survol) et badge sur l'invité concerné |
+| **Haute disponibilité** | « HA armed state », « HA resources in error », « CRM master stale » du cluster (identifiants optionnels d'administration du cluster) | Pastille quand la HA est désarmée, quand des ressources sont en erreur ou quand le gestionnaire ne répond plus ; état « HA » sur la tuile du cluster |
+
+Le préfixe « nœud · » s'ajoute aux pastilles de certificat, d'abonnement et de réplication quand il y a plusieurs nœuds. Les pastilles dépendent de `show_alerts`, les tuiles de `show_storage`.
 
 ## Filtrer et renommer les invités
 
@@ -284,12 +289,12 @@ La carte parcourt les entités dont la plateforme est `proxmoxve_custom`, les re
 
 | Appareil | Rôles lus |
 |---|---|
-| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
-| **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, boutons start / shutdown / reboot / stop |
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 / 5 / 15 min, IO delay, version, réplication en échec, boutons du « ⋯ » (start_all, stop_all, suspend_all, backup_all, reboot, shutdown, wakeonlan), expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
+| **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, part de l'hôte (CPU / mémoire), boutons start / shutdown / reboot / stop / snapshot et ceux du « ⋯ » (suspend, resume, hibernate, reset, backup, unlock) |
 | **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
-| **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement |
+| **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement, cycles d'alimentation, coupures brutales |
 | **Pool ZFS** (`ZFS nœud: pool`) | état, occupation (%), taille, utilisé |
-| **Proxmox Cluster** | CPU, mémoire, quorum, santé et occupation de Ceph, invités sans sauvegarde |
+| **Proxmox Cluster** | CPU, mémoire, quorum, santé et occupation de Ceph, invités sans sauvegarde, état de la HA (armée / désarmée), ressources HA en erreur, gestionnaire HA injoignable, boutons Arm / Disarm HA |
 
 Le type d'appareil est déterminé d'après son nom et son modèle (`Node …`, `QEMU … (109)`, `LXC … (516)`, `Storage …`, `Disk …`). Le numéro entre parenthèses devient le VMID affiché.
 
@@ -308,7 +313,22 @@ Les actions **Arrêter**, **Redémarrer** et **Forcer l'arrêt** demandent un **
 
 Côté Proxmox, l'utilisateur de l'intégration doit avoir le privilège `VM.PowerMgmt` ; sans lui, les boutons ne sont pas créés par l'intégration.
 
-Pour masquer tous les boutons : `show_actions: false`.
+### Menu « ⋯ »
+
+Les autres actions sont regroupées dans un menu « ⋯ », à droite des boutons d'un invité, et en haut à droite de la tuile d'un nœud ou du cluster. Le menu ne propose que les actions possibles dans l'état actuel, et seulement si l'entité bouton correspondante existe (elles sont **toutes désactivées par défaut** dans l'intégration). Un seul menu est ouvert à la fois ; il se referme après une action.
+
+| Où | Action | Visible si | Confirmation |
+|---|---|---|---|
+| Invité | Reprendre | l'invité est en pause ou suspendu | non |
+| Invité | Suspendre, Réinitialiser | l'invité tourne | oui |
+| Invité (VM) | Mettre en veille prolongée | la VM tourne | oui |
+| Invité | Sauvegarder maintenant | toujours | oui |
+| Invité | Déverrouiller | l'invité est verrouillé | oui |
+| Nœud | Wake-on-LAN | le nœud est hors ligne | non |
+| Nœud | Démarrer / Arrêter / Suspendre / Sauvegarder tous les invités, Redémarrer, Éteindre le nœud | le nœud est en ligne | oui |
+| Cluster | Armer / Désarmer la HA | selon l'état de la HA | oui |
+
+Pour masquer tous les boutons et les menus : `show_actions: false`.
 
 > Les sections et informations sans entité correspondante (par exemple pas de disques SMART, pas d'agent invité) n'apparaissent simplement pas.
 

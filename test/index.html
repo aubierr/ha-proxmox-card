@@ -94,6 +94,7 @@
   }
   for (const [id, n, t, w, h, prob] of [["d1", "Samsung SSD 970 EVO 500GB", 38, 5, 12420, "off"], ["d2", "Crucial MX500 1TB", 44, 21, 30210, "off"]]) {
     dev(id, `Disk pve: ${n}`, "SSD", "n1"); ent(id, "sensor", "temperature", t); ent(id, "sensor", "disk_wearout", w); ent(id, "sensor", "power_hours", h); ent(id, "binary_sensor", "health", prob);
+    ent(id, "sensor", "power_cycles", { d1: 152, d2: 1840 }[id]); ent(id, "sensor", "power_loss", { d1: 12, d2: 97 }[id]);
   }
   const NET = { q1: [45e3, 12e3], q2: [8.4e6, 1.2e6], l1: [2.1e6, 640e3], l2: [3.2e3, 1.1e3], l3: [15e6, 310e3] }; // bytes per second (fictional)
   const netRates = {};
@@ -121,7 +122,19 @@
       netRates[`sensor.${id}_network_in`] = rin; netRates[`sensor.${id}_network_out`] = rout;
     }
     ent(id, "button", st === "running" ? "shutdown" : "start", "unknown"); if (st === "running") ent(id, "button", "reboot", "unknown");
+    // "⋯" menu buttons and the guest's share of the host
+    ["suspend", "resume", "reset", "backup", "unlock"].concat(model === "QEMU" ? ["hibernate"] : []).forEach((k) => ent(id, "button", k, "unknown"));
+    if (st === "running") { ent(id, "sensor", "cpu_of_host", cpu / 8); ent(id, "sensor", "memory_of_host", { q1: 4, q2: 16, l1: 8, l2: 0.5, l3: 8 }[id] * mem / 32); }
   }
+  // locked guest (unlock in its menu), node actions, replication and HA (?calm=1: all fine)
+  if (!calm) states["binary_sensor.l2_locked"].state = "on";
+  ["start_all", "stop_all", "suspend_all", "backup_all", "shutdown", "reboot", "wakeonlan"].forEach((k) => ent("n1", "button", k, "unknown"));
+  ent("n1", "sensor", "load_5m", 0.52); ent("n1", "sensor", "load_15m", 0.6);
+  ent("n1", "binary_sensor", "replication_failing", calm ? "off" : "on", calm ? {} : { failing_jobs: [{ id: "104-0", guest: 104, guest_type: "qemu", target: "srv2", failures: 3, error: "no space left on device" }], jobs: 2 });
+  ent("c1", "sensor", "ha_armed_state", calm ? "armed" : "disarmed", { resource_mode: "freeze" });
+  ent("c1", "sensor", "ha_resources_error", calm ? 0 : 1, { ha_resources_error_list: calm ? [] : ["vm:104"] });
+  ent("c1", "binary_sensor", "ha_crm_master_stale", "off");
+  ent("c1", "button", "arm_ha", "unknown"); ent("c1", "button", "disarm_ha", "unknown");
   window.__hass = { states, entities, devices, language: lang, locale: { language: lang }, callService: (d, s, p) => console.log("service", d, s, p),
     // fake recorder: smooth random-looking curves around the current value
     callWS: async (msg) => {

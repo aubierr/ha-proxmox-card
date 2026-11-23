@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0
+
+- Menu « ⋯ » sur les invités : reprendre, suspendre, mettre en veille prolongée (VM), réinitialiser, sauvegarder maintenant, déverrouiller. Seules les actions possibles dans l'état actuel sont proposées, avec confirmation par second clic pour les actions risquées.
+- Menu « ⋯ » sur les nœuds : démarrer, arrêter, suspendre ou sauvegarder tous les invités, redémarrer ou éteindre le nœud, et Wake-on-LAN quand il est hors ligne.
+- Haute disponibilité : état « HA » sur la tuile du cluster et menu pour armer / désarmer ; pastilles quand la HA est désarmée, quand des ressources HA sont en erreur ou quand le gestionnaire HA ne répond plus.
+- Réplication : pastille « réplication en échec » (tâches et erreur au survol) et badge sur l'invité concerné.
+- Charge 5 et 15 min à côté de la charge 1 min des nœuds.
+- Part de l'hôte (`show_host_share`) : part du CPU et de la RAM du nœud utilisée par chaque invité, sous ses jauges ; message d'aide dans l'éditeur quand les entités manquent.
+- Disques physiques : cycles d'alimentation et coupures brutales, en infobulle et sous les heures de fonctionnement.
+- Robustesse : la mise à jour de la carte ne touche plus au contenu d'un élément personnalisé vide (icônes).
+- Textes : nouveaux textes dans les 20 langues ; page de test enrichie (boutons, réplication, HA, charge, compteurs).
+
 ## 1.2.0
 
 - Compatibilité avec l'intégration Proxmox VE Custom 6.0 : son domaine passe de `proxmoxve` à `proxmoxve_custom`. La carte lit les entités `proxmoxve_custom`, et celles de `proxmoxve` seulement quand l'intégration n'est pas encore migrée (5.x). Quand l'intégration native Proxmox VE de Home Assistant (domaine `proxmoxve`) est installée en même temps, ses entités sont ignorées.
