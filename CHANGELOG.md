@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+- Pools ZFS et Ceph : le nom n'est plus tronqué sur les cartes larges ; l'étiquette « ZFS » (avec le nœud quand il y en a plusieurs) ou « Cluster » passe sur une ligne à part, sous la barre.
+- Invités : la taille et la part de l'hôte s'affichent sur deux lignes sous les jauges, au lieu d'une ligne tronquée.
+- Captures d'écran du README mises à jour.
+
 ## 1.3.0
 
 - Menu « ⋯ » sur les invités : reprendre, suspendre, mettre en veille prolongée (VM), réinitialiser, sauvegarder maintenant, déverrouiller. Seules les actions possibles dans l'état actuel sont proposées, avec confirmation par second clic pour les actions risquées.

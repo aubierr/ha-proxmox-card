@@ -360,8 +360,12 @@ Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (l
 Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
 
 ```bash
-msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1210   --virtual-time-budget=12000 --screenshot=docs/screenshots/card-light.png   "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1995 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
 ```
+
+La hauteur de la fenêtre (`--window-size`) doit suivre celle de la carte : à ajuster quand la carte grandit.
 
 ### Vérifications automatiques
 

@@ -3,7 +3,7 @@
  * https://github.com/dougiteixeira/proxmoxve
  * Vanilla JS, Shadow DOM, no dependencies.
  */
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 // Integration domain: `proxmoxve_custom` since proxmoxve 6.0; `proxmoxve` before (now also the domain of the core integration).
 const PLATFORM = "proxmoxve_custom", LEGACY_PLATFORM = "proxmoxve";
 
@@ -132,9 +132,9 @@ ha-card > * { position:relative; }
 .bd.info { color:var(--secondary-text-color); }
 .ssz { font-size:11px; color:var(--secondary-text-color); font-variant-numeric:tabular-nums; margin-top:-2px; }
 .stor.dis { opacity:.55; }
+.ssz.kind { display:flex; align-items:center; gap:6px; margin-top:-4px; } .ssz .tag { font-size:10px; font-weight:600; padding:1px 6px; border-radius:8px; background:color-mix(in srgb,var(--primary-text-color) 8%,transparent); }
 .ssz.crit { color:var(--px-crit); font-weight:600; } .ssz.warn { color:var(--px-warn); font-weight:600; }
 .dot.warn { background:var(--px-warn); }
-.sh .tag { flex:none !important; font-size:10px; font-weight:600; padding:1px 6px; border-radius:8px; color:var(--secondary-text-color); background:color-mix(in srgb,var(--primary-text-color) 8%,transparent); }
 .alerts .chip[data-more] { cursor:pointer; }
 .sh .shr { --mdc-icon-size:14px; color:var(--secondary-text-color); flex:none; }
 .gnet { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:3px; font-size:11px; color:var(--secondary-text-color); font-variant-numeric:tabular-nums; }
@@ -723,8 +723,10 @@ export class ProxmoxCard extends HTMLElement {
   _mini(label, v, thr, sz, host = null) {
     const { tip, text } = this._sizeInfo(sz);
     const hs = host === null ? "" : `${host < 10 ? host.toFixed(1) : Math.round(host)} % ${this._t("ofHost")}`;
-    const tt = [tip, hs].filter(Boolean).join(" · "), shown = [text, hs].filter(Boolean).join(" · ");
-    return `<div class="gm"${tt ? ` title="${esc(tt)}"` : ""}><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div>${shown ? `<small class="gs">${esc(shown)}</small>` : ""}</div>`;
+    const tt = [tip, hs].filter(Boolean).join(" · ");
+    // size and host share each on their own line: together they did not fit in a gauge column
+    const lines = [text, hs].filter(Boolean).map((x) => `<small class="gs">${esc(x)}</small>`).join("");
+    return `<div class="gm"${tt ? ` title="${esc(tt)}"` : ""}><div class="gl"><span>${label}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div><div class="bar"><i class="${level(v, thr)}" style="width:${v ?? 0}%"></i></div>${lines}</div>`;
   }
 
   _sec(key, title, extra = "") {
@@ -849,8 +851,9 @@ export class ProxmoxCard extends HTMLElement {
     const r = p.roles, hs = this._state(r.zfs_health) || "", bad = hs && !ZFS_OK.test(hs);
     const v = this._pct(p, "disk"), sz = this._sizes(p, "disk");
     return `<div class="stor ${bad ? "off" : ""}" title="${esc(sz ? fmtUsedTotal(sz.used, sz.total) : "")}" data-more="${esc((r.zfs_health || r.disk_pct).entity_id)}">
-      <div class="sh"><span class="dot ${/^online$/i.test(hs) ? "on" : bad ? "off" : ""}"></span><span title="${esc(p.host)}">${esc(p.name)}${multi ? ` · ${esc(p.host)}` : ""}</span><span class="tag">ZFS</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>
+      <div class="sh"><span class="dot ${/^online$/i.test(hs) ? "on" : bad ? "off" : ""}"></span><span title="${esc(p.name)}">${esc(p.name)}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>
       <div class="bar"><i class="${level(v, T.disk)}" style="width:${v ?? 0}%"></i></div>
+      <div class="ssz kind"><span class="tag">ZFS</span>${multi ? esc(p.host) : ""}</div>
       ${bad ? `<div class="ssz crit">${esc(hs)}</div>` : this._cfg.show_sizes && sz && sz.free !== null ? `<div class="ssz">${esc(fmtScaled(sz.free, SIZES))} ${esc(this._t("free"))} / ${esc(fmtScaled(sz.total, SIZES))}</div>` : ""}</div>`;
   }
   /** Ceph tile (Storage section), from the cluster device. */
@@ -858,8 +861,9 @@ export class ProxmoxCard extends HTMLElement {
     const r = cl.roles, hs = this._state(r.ceph_health), v = this._pct(cl, "ceph"), sz = this._sizes(cl, "ceph");
     const dot = hs === "ok" ? "on" : hs === "error" ? "off" : hs === "warning" ? "warn" : "";
     return `<div class="stor ${hs === "error" ? "off" : ""}" title="${esc(sz ? fmtUsedTotal(sz.used, sz.total) : "")}" data-more="${esc((r.ceph_health || r.ceph_pct).entity_id)}">
-      <div class="sh"><span class="dot ${dot}"></span><span>Ceph</span><span class="tag">${esc(this._t("cluster"))}</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>
+      <div class="sh"><span class="dot ${dot}"></span><span>Ceph</span><b>${v === null ? "–" : Math.round(v) + "%"}</b></div>
       <div class="bar"><i class="${level(v, T.disk)}" style="width:${v ?? 0}%"></i></div>
+      <div class="ssz kind"><span class="tag">${esc(this._t("cluster"))}</span></div>
       ${hs === "warning" || hs === "error" ? `<div class="ssz ${hs === "error" ? "crit" : "warn"}">${esc(this._t(hs === "error" ? "cephErr" : "cephWarn"))}</div>` : this._cfg.show_sizes && sz && sz.free !== null ? `<div class="ssz">${esc(fmtScaled(sz.free, SIZES))} ${esc(this._t("free"))} / ${esc(fmtScaled(sz.total, SIZES))}</div>` : ""}</div>`;
   }
   _clusterTile(data, nOn, T) {
