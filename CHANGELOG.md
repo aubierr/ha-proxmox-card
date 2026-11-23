@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- Compatibilité avec l'intégration Proxmox VE Custom 6.0 : son domaine passe de `proxmoxve` à `proxmoxve_custom`. La carte lit les entités `proxmoxve_custom`, et celles de `proxmoxve` seulement quand l'intégration n'est pas encore migrée (5.x). Quand l'intégration native Proxmox VE de Home Assistant (domaine `proxmoxve`) est installée en même temps, ses entités sont ignorées.
+- Nouvelle version de Proxmox VE : la pastille de version d'un nœud passe en orange (« PVE 9.2.26 → 9.2.27 ») quand l'entité de mise à jour du nœud annonce une nouvelle version ; un clic ouvre cette entité (notes de version). Seule une vraie nouvelle version de Proxmox VE est signalée, pas une simple mise à jour de paquets.
+- Pastille « mises à jour » : utilise l'entité de mise à jour du nœud quand le capteur « Update available » est désactivé.
+- Textes : le message « aucune entité trouvée » nomme `proxmoxve_custom` ; nouveau texte dans les 20 langues. Page de test : domaine `proxmoxve_custom`, `?legacy=1` pour l'ancien domaine.
+
 ## 1.1.1
 
 - Réseau : le débit retombe à 0 quand le compteur d'un invité ne bouge plus (au lieu de rester figé sur la dernière valeur) ; un horodatage illisible n'affiche plus de débit aberrant ; les unités inconnues ne sont plus prises pour des octets.

@@ -46,17 +46,26 @@
   const dev = (id, name, model, via) => (devices[id] = { id, name, model, via_device_id: via });
   const ent = (device_id, domain, key, state, extra = {}) => {
     const entity_id = `${domain}.${device_id}_${key}`;
-    entities[entity_id] = { entity_id, platform: "proxmoxve", device_id, translation_key: key };
+    entities[entity_id] = { entity_id, platform: q.get("legacy") ? "proxmoxve" : "proxmoxve_custom", device_id, translation_key: key };
     states[entity_id] = { entity_id, state: String(state), attributes: extra, last_updated: new Date().toISOString() };
   };
   const ago = (days) => new Date(Date.now() - days * 864e5).toISOString();
-  // Fictional data, using the real translation keys of the proxmoxve integration
+  // Fictional data, using the real translation keys of the proxmoxve_custom integration (?legacy=1: old `proxmoxve` domain, before 6.0)
   dev("n1", "Node pve", "Intel(R) Xeon(R) CPU");
   [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 23], ["sensor", "memory_used_perc", 61], ["sensor", "disk_used_perc", 74], ["sensor", "swap_used_perc", 17],
    ["sensor", "uptime", ago(12.3)], ["sensor", "load_1m", 0.41], ["sensor", "io_wait", 0.8], ["sensor", "version", "9.2.26"], ["sensor", "memory_used", 19.5, { unit_of_measurement: "GB" }], ["sensor", "memory_free", 12.5, { unit_of_measurement: "GB" }],
    ["sensor", "disk_total", 500, { unit_of_measurement: "GB" }], ["sensor", "disk_used", 370, { unit_of_measurement: "GB" }],
    ["binary_sensor", "update_avail", "on"], ["sensor", "updates_total", 6], ["binary_sensor", "backup_running", "off"], ["sensor", "failed_tasks_count", 0]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
   [["sensor", "backup_last", ago(0.3)], ["binary_sensor", "backup_status", "off"]].forEach(([d, k, v, x]) => ent("n1", d, k, v, x));
+  // update entity of the node: a new Proxmox VE release on pve, only other packages on srv2
+  ent("n1", "update", "node_update", "on", { installed_version: "9.2.26", latest_version: "9.2.27" });
+  ent("n2", "update", "node_update", "on", { installed_version: "9.2.26", latest_version: "9.2.26" });
+  // a node of the core integration (domain `proxmoxve`): ignored as soon as proxmoxve_custom is present
+  if (!q.get("legacy")) {
+    devices.core1 = { id: "core1", name: "Node core-pve", model: "Node" };
+    entities["binary_sensor.core1_status"] = { entity_id: "binary_sensor.core1_status", platform: "proxmoxve", device_id: "core1", translation_key: "status" };
+    states["binary_sensor.core1_status"] = { entity_id: "binary_sensor.core1_status", state: "on", attributes: {}, last_updated: new Date().toISOString() };
+  }
   // a second node and the cluster device (only shown when the cluster has 2 nodes or more)
   dev("n2", "Node srv2", "Intel(R) Core(TM) CPU");
   [["binary_sensor", "status", "on"], ["sensor", "cpu_used", 38], ["sensor", "memory_used_perc", 57], ["sensor", "disk_used_perc", 45], ["sensor", "uptime", ago(3.4)], ["sensor", "version", "9.2.26"],

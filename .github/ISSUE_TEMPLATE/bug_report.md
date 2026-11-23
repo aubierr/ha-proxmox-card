@@ -9,7 +9,7 @@ labels: bug
 
 **Version de la carte** (HACS → Proxmox Card) :
 **Version de Home Assistant** :
-**Version de l'intégration proxmoxve** :
+**Version de l'intégration Proxmox VE Custom (proxmoxve_custom)** :
 **Appareil / navigateur** (application Android, iOS, Chrome…) :
 
 **Votre configuration YAML**
@@ -20,7 +20,7 @@ type: custom:proxmox-card
 **Entités concernées** (si un capteur n'est pas reconnu)
 <!-- Collez le résultat de ce script dans la console du navigateur (F12) sur votre tableau de bord :
 Object.values(document.querySelector('home-assistant').hass.entities)
-  .filter(e => e.platform === 'proxmoxve')
+  .filter(e => e.platform === 'proxmoxve_custom' || e.platform === 'proxmoxve')
   .map(e => `${e.entity_id} | ${e.translation_key} | ${document.querySelector('home-assistant').hass.states[e.entity_id]?.state}`)
   .join('\n')
 -->

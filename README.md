@@ -6,7 +6,7 @@
 
 Carte Lovelace pour Home Assistant qui affiche votre infrastructure **Proxmox VE** : nœuds, machines virtuelles (QEMU) et conteneurs (LXC), avec jauges CPU / RAM / disque et boutons d'action.
 
-Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeira/proxmoxve) de dougiteixeira : JavaScript pur, aucune dépendance (ni Mushroom, ni card-mod, ni button-card), thème clair/sombre automatique.
+Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/dougiteixeira/proxmoxve) de dougiteixeira (domaine `proxmoxve_custom` depuis la 6.0) : JavaScript pur, aucune dépendance (ni Mushroom, ni card-mod, ni button-card), thème clair/sombre automatique.
 
 [![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin) **Ajouter la carte à HACS**
 
@@ -37,7 +37,7 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 
 ## Fonctionnalités
 
-- **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve`.
+- **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve_custom` (ou `proxmoxve` avant la 6.0 de l'intégration).
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
 - **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
@@ -64,7 +64,16 @@ Elle s'appuie sur l'intégration [**proxmoxve**](https://github.com/dougiteixeir
 ## Prérequis
 
 - Home Assistant récent (2024.x ou plus ; la carte lit le registre d'entités et d'appareils exposé au frontend).
-- L'intégration [proxmoxve](https://github.com/dougiteixeira/proxmoxve) installée et configurée ([ajouter dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)) (la carte ne fonctionne pas avec l'intégration Proxmox « core » : elle cible la plateforme `proxmoxve`).
+- L'intégration [Proxmox VE Custom](https://github.com/dougiteixeira/proxmoxve) installée et configurée, de préférence en version 6.0 ou plus ([ajouter dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)) (la carte ne fonctionne pas avec l'intégration Proxmox « core » : elle cible la plateforme `proxmoxve`).
+
+### Intégration 6.0 : changement de domaine
+
+Depuis sa version 6.0, l'intégration s'appelle **Proxmox VE Custom** et son domaine passe de `proxmoxve` à `proxmoxve_custom` (pour cohabiter avec l'intégration Proxmox VE native de Home Assistant, qui utilise `proxmoxve`). La carte suit le changement toute seule :
+
+- si des entités `proxmoxve_custom` existent, la carte n'utilise qu'elles et ignore celles de l'intégration native, même si les deux sont installées ;
+- sinon, elle lit les entités `proxmoxve` (intégration en version 5.x, pas encore migrée).
+
+Aucune modification de la configuration de la carte n'est nécessaire. La migration de l'intégration elle-même se fait en suivant les [notes de version 6.0](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.1) (sauvegarde, version 6.0.0b0 de transition, puis réinstallation).
 
 ## Installation
 
@@ -167,7 +176,7 @@ thresholds:
 | `show_disks` | booléen | `true` | Section des disques physiques (SMART) |
 | `show_swap` | booléen | `true` | Jauge de swap sur les nœuds |
 | `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
-| `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds |
+| `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds, avec la nouvelle version disponible (« PVE 9.2.26 → 9.2.27 ») |
 | `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
 | `sort` | texte | `id` | Critère de tri des invités : `id`, `name` ou `status` (actifs d'abord) |
 | `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
@@ -256,11 +265,11 @@ Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur p
 
 ## Quelles entités sont utilisées ?
 
-La carte parcourt les entités dont la plateforme est `proxmoxve`, les regroupe par appareil, puis reconnaît leur rôle grâce à leur clé de traduction ou à leur identifiant :
+La carte parcourt les entités dont la plateforme est `proxmoxve_custom`, les regroupe par appareil, puis reconnaît leur rôle grâce à leur clé de traduction ou à leur identifiant :
 
 | Appareil | Rôles lus |
 |---|---|
-| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, mise à jour disponible et nombre de mises à jour, sauvegarde en cours, tâches en échec |
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
 | **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, boutons start / shutdown / reboot / stop |
 | **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
 | **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement |
@@ -290,13 +299,13 @@ Pour masquer tous les boutons : `show_actions: false`.
 
 | Symptôme | Cause probable / solution |
 |---|---|
-| « Aucune entité Proxmox trouvée » | L'intégration `proxmoxve` n'est pas installée, ou aucun nœud / invité n'est suivi dans ses options |
+| « Aucune entité Proxmox trouvée » | L'intégration Proxmox VE Custom n'est pas installée, ou aucun nœud / invité n'est suivi dans ses options. Avec seulement l'intégration Proxmox VE native de Home Assistant, la carte ne trouve rien d'utilisable |
 | La carte n'apparaît pas dans le sélecteur | Ressource non ajoutée ou cache : vérifier `/local/proxmox-card.js` (type module) et faire Ctrl+F5 |
 | Jauge RAM ou disque à « – » | Entité de mémoire / disque désactivée par défaut : l'activer (voir plus haut). Un conteneur arrêté remonte son disque en « inconnu » |
 | Pas de boutons | Entités `button.*` désactivées, ou privilège `VM.PowerMgmt` manquant côté Proxmox. L'éditeur visuel l'indique sous l'option « Boutons marche / arrêt » (« 6 invités sur 6 ont des boutons… » ou « Aucun bouton trouvé… ») |
 | Un invité manque | Les modèles (templates) ne sont jamais suivis ; vérifier aussi `node` et `show_stopped` |
 | Pas d'IP affichée | Capteur « IP address » absent : nécessite l'agent invité (VM) ou les droits `VM.Audit` (LXC) |
-| Mauvais capteur reconnu | [Ouvrez une issue](https://github.com/aubierr/ha-proxmox-card/issues/new/choose) : le modèle fournit un script qui liste vos entités `proxmoxve` (nom, clé de traduction, `entity_id`) |
+| Mauvais capteur reconnu | [Ouvrez une issue](https://github.com/aubierr/ha-proxmox-card/issues/new/choose) : le modèle fournit un script qui liste vos entités `proxmoxve_custom` (nom, clé de traduction, `entity_id`) |
 
 ## Développement
 
