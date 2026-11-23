@@ -1,0 +1,453 @@
+# ha-proxmox-card
+
+[English](README.md) · **Français**
+
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Validate](https://github.com/aubierr/ha-proxmox-card/actions/workflows/validate.yml/badge.svg)](https://github.com/aubierr/ha-proxmox-card/actions/workflows/validate.yml)
+
+Carte Lovelace pour Home Assistant qui affiche votre infrastructure **Proxmox VE** : nœuds, machines virtuelles (QEMU) et conteneurs (LXC), avec jauges CPU / RAM / disque et boutons d'action.
+
+Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/dougiteixeira/proxmoxve) de dougiteixeira (domaine `proxmoxve_custom` depuis la 6.0) : JavaScript pur, aucune dépendance (ni Mushroom, ni card-mod, ni button-card), thème clair/sombre automatique.
+
+[![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin) **Ajouter la carte à HACS**
+
+<p align="center">
+  <img src="docs/screenshots/card-light.png" width="48%" alt="Carte Proxmox, thème clair">
+  <img src="docs/screenshots/card-dark.png" width="48%" alt="Carte Proxmox, thème sombre">
+</p>
+<p align="center">
+  <img src="docs/screenshots/card-mobile.png" width="300" alt="Carte Proxmox sur un écran étroit (téléphone), en français">
+</p>
+
+## Sommaire
+
+- [Fonctionnalités](#fonctionnalités)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Historique, sauvegarde et cluster](#historique-sauvegarde-et-cluster)
+- [Tailles, pression et instantanés](#tailles-pression-et-instantanés)
+- [Réseau entrant et sortant](#réseau-entrant-et-sortant)
+- [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-abonnement-réplication-et-ha)
+- [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
+- [Carte d'un seul invité](#carte-dun-seul-invité)
+- [Seuils des jauges](#seuils-des-jauges)
+- [Couleurs et thèmes](#couleurs-et-thèmes)
+- [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
+- [Boutons d'action](#boutons-daction)
+- [Dépannage](#dépannage)
+- [Développement](#développement)
+- [Licence](#licence)
+
+## Fonctionnalités
+
+- **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve_custom` (ou `proxmoxve` avant la 6.0 de l'intégration).
+- **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
+- **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
+- **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut, pool ZFS dégradé, Ceph en avertissement ou en erreur, invités sans sauvegarde, certificat bientôt expiré, abonnement non valide. Un clic sur une pastille ouvre l'entité concernée.
+- **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système (1 min, et 5 / 15 min si ces capteurs sont activés), l'IO delay (orange / rouge selon `thresholds.io`), la température du CPU (capteurs matériels, selon `thresholds.cpu_temperature`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
+- **Liste des invités** (VM et LXC) : statut, nom, numéro, nœud (sur un cluster), adresse IP, uptime, jauges CPU, RAM et disque, part de l'hôte utilisée (« 3,9 % de l'hôte »), et badges (verrouillé, agent invité injoignable, problème signalé, réplication en échec).
+- **Tailles réelles** : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités (affichés, ou au survol).
+- **Pression** : badge orange ou rouge sur un invité dont le CPU, la mémoire ou les E/S sont saturés (indicateurs PSI de Proxmox).
+- **Instantanés** : nombre d'instantanés de chaque invité et bouton pour en créer un (avec confirmation).
+- **Réseau par invité** : débit entrant et sortant (ou total depuis le démarrage) sous le nom de chaque invité qui tourne, en octets ou en bits par seconde.
+- **Tri des invités** : réglable dans la configuration (critère, sens, regroupement VM / LXC et ordre des groupes) et par boutons sur la carte (Type et Nœud pour regrouper, puis ID / Nom / État / CPU / RAM ; CPU et RAM mettent les plus chargés en premier ; un second clic sur le critère actif inverse le sens). Le choix fait avec les boutons est conservé jusqu'au rechargement de la page.
+- **Sections repliables** : un clic sur le titre d'une section la replie (le choix est mémorisé dans le navigateur) ; `collapsed` règle l'état par défaut.
+- **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`), ordre des sections réglable (`section_order`).
+- **Prévision de remplissage** : à partir des 7 derniers jours d'historique, chaque stockage, pool ZFS et Ceph qui se remplit affiche « plein dans ~23 j », avec une pastille d'alerte à l'approche de l'échéance.
+- **Recherche et filtre « Problèmes »** : à partir de 6 invités, un champ de recherche (nom ou ID) et un bouton qui ne garde que les invités en alerte.
+- **Détail d'un invité** : le chevron à côté du nom déplie ses courbes CPU, RAM et réseau (reçu / envoyé, avec le débit maximal de la période) et la liste de ses alertes en clair.
+- **Carte d'un seul invité** (`custom:proxmox-guest-card`) : la tuile d'une VM ou d'un conteneur, à placer n'importe où (voir plus bas).
+- **Mode compact** (`compact`) : barres au lieu des anneaux, sans courbes, pour les petits tableaux de bord.
+- **Accessible au clavier** : tuiles et pastilles atteignables avec Tab et ouvertes avec Entrée ; boutons nommés pour les lecteurs d'écran.
+- **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison ; le classement des entités est mis en cache tant que le registre ne change pas.
+- **Thèmes** : couleurs réglables depuis un thème Home Assistant (voir [Couleurs et thèmes](#couleurs-et-thèmes)).
+- **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
+- **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif, plus les **pools ZFS** (état `ONLINE`, `DEGRADED`…) et **Ceph** (santé et occupation du cluster).
+- **Disques physiques** : santé SMART, température, usure, heures de fonctionnement, cycles d'alimentation (↻) et coupures brutales (⚡).
+- **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
+- **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées ; menu « ⋯ » pour les autres actions des invités (suspendre, reprendre, veille prolongée, réinitialiser, sauvegarder, déverrouiller), des nœuds (démarrer / arrêter / suspendre / sauvegarder tous les invités, redémarrer, éteindre, Wake-on-LAN) et du cluster (armer / désarmer la HA).
+- **Fenêtre de détail** : un clic sur un nœud ou un invité ouvre la fiche (more-info) de son entité, ou une autre action avec `tap_action` (naviguer vers un tableau de bord, ouvrir une URL…). Les menus « ⋯ » se ferment avec Échap ou par un clic à côté.
+- **Responsive** : la mise en page s'adapte à la largeur de la carte (container queries) ; sur une carte étroite, les jauges des invités passent sous leur nom et les pastilles de l'en-tête sont masquées.
+- **Éditeur visuel** intégré, avec des messages d'aide (combien d'invités ont des boutons, combien de stockages et de disques sont détectés) ; l'éditeur et l'interface traduits en **20 langues** (français, anglais, allemand, espagnol, italien, portugais, néerlandais, polonais, tchèque, suédois, danois, norvégien, finnois, russe, ukrainien, turc, roumain, hongrois, japonais, chinois), choisie automatiquement d'après Home Assistant.
+- Respecte `prefers-reduced-motion`.
+
+## Prérequis
+
+- Home Assistant récent (2024.x ou plus ; la carte lit le registre d'entités et d'appareils exposé au frontend).
+- L'intégration [Proxmox VE Custom](https://github.com/dougiteixeira/proxmoxve) installée et configurée, de préférence en version 6.0 ou plus ([ajouter dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=dougiteixeira&repository=proxmoxve&category=integration)) (la carte ne fonctionne pas avec l'intégration Proxmox « core » : elle cible la plateforme `proxmoxve`).
+
+### Intégration 6.0 : changement de domaine
+
+Depuis sa version 6.0, l'intégration s'appelle **Proxmox VE Custom** et son domaine passe de `proxmoxve` à `proxmoxve_custom` (pour cohabiter avec l'intégration Proxmox VE native de Home Assistant, qui utilise `proxmoxve`). La carte suit le changement toute seule :
+
+- si des entités `proxmoxve_custom` existent, la carte n'utilise qu'elles et ignore celles de l'intégration native, même si les deux sont installées ;
+- sinon, elle lit les entités `proxmoxve` (intégration en version 5.x, pas encore migrée).
+
+Aucune modification de la configuration de la carte n'est nécessaire. La migration de l'intégration elle-même se fait en suivant les [notes de version 6.0](https://github.com/dougiteixeira/proxmoxve/releases/tag/6.0.1) (sauvegarde, version 6.0.0b0 de transition, puis réinstallation).
+
+## Installation
+
+### Via HACS (dépôt personnalisé)
+
+En un clic (nécessite [My Home Assistant](https://my.home-assistant.io) configuré avec l'adresse de votre instance) :
+
+[![Ouvrir votre Home Assistant et ajouter ce dépôt dans HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=aubierr&repository=ha-proxmox-card&category=plugin)
+
+Ou à la main :
+
+1. HACS → menu ⋮ → **Dépôts personnalisés**.
+2. Ajouter `https://github.com/aubierr/ha-proxmox-card`, type **Tableau de bord** (Dashboard / Lovelace).
+3. Installer **Proxmox Card**, puis recharger le navigateur (Ctrl+F5).
+
+### Manuelle
+
+1. Copier [`dist/proxmox-card.js`](dist/proxmox-card.js) dans `/config/www/`.
+2. Réglages → Tableaux de bord → ⋮ → **Ressources** → **Ajouter une ressource** :
+   - URL : `/local/proxmox-card.js`
+   - Type : **Module JavaScript**
+3. Recharger le navigateur.
+
+## Configuration
+
+Ajoutez la carte depuis l'éditeur visuel (« Proxmox Card ») ou en YAML :
+
+```yaml
+type: custom:proxmox-card
+title: Proxmox
+```
+
+Exemple complet :
+
+```yaml
+type: custom:proxmox-card
+title: Homelab
+node: pve                # ne garder que les appareils dont le nom contient "pve"
+show_nodes: true
+show_qemu: true
+show_lxc: true
+show_stopped: true
+show_actions: true
+show_ip: true
+show_uptime: true
+show_badges: true
+show_alerts: true
+show_storage: true
+show_disks: true
+show_swap: true
+show_load: true
+show_version: true
+show_sort: true
+sort: id                 # id | name | status | cpu | mem
+sort_dir: asc            # asc | desc
+group_by_type: false     # true = VM puis LXC (ou l'inverse avec type_order)
+group_by_node: false     # true = invités regroupés par nœud (clusters)
+type_order: vm_first     # vm_first | lxc_first
+show_cluster: true       # résumé du cluster à partir de 2 nœuds
+show_history: true       # courbes d'historique CPU / RAM des nœuds
+history_hours: 24        # période : 6, 12, 24, 48 ou 72
+show_backup: true        # date de la dernière sauvegarde
+show_network: true       # réseau entrant / sortant de chaque invité
+show_sizes: true         # tailles (libre / total, utilisé / total)
+show_pressure: true      # badge de pression CPU / mémoire / E/S
+show_snapshots: true     # nombre d'instantanés et bouton « créer »
+show_host_share: true    # part de l'hôte utilisée par chaque invité
+show_temperature: true   # température CPU des nœuds (capteurs matériels)
+show_forecast: true      # prévision de remplissage des stockages
+show_filter_bar: true    # recherche et filtre « Problèmes » (à partir de 6 invités)
+compact: false           # mode compact
+network_mode: rate       # rate (débit) | total (depuis le démarrage)
+network_unit: bytes      # bytes (kB/s, MB/s…) | bits (kbit/s, Mbit/s…)
+guest_columns: auto      # auto (2 colonnes si large) | 1 | 2
+collapsed: [disks]       # sections repliées par défaut : nodes, guests, storage, disks
+section_order: [guests, nodes]   # ces sections d'abord, les autres ensuite
+tap_action:              # action au clic sur une tuile (par défaut : fiche de l'entité)
+  action: navigate
+  navigation_path: /tableau-de-bord/proxmox
+accent: "#1e88e5"         # couleur d'accent (n'importe quelle couleur CSS)
+exclude: [openwrt, "120"]   # masquer ces invités (ID ou nom)
+# include: [100, docker]    # ou n'afficher que ceux-là
+guests:                     # nom et icône personnalisés (clé = ID ou nom)
+  "104": { name: Routeur, icon: mdi:router-wireless }
+language: fr
+thresholds:
+  cpu:         { warning: 60, critical: 85 }
+  memory:      { warning: 80, critical: 95 }
+  disk:        { warning: 80, critical: 90 }
+  temperature: { warning: 55, critical: 70 }
+  wear:        { warning: 70, critical: 90 }
+  io:          { warning: 5,  critical: 15 }
+  pressure:    { warning: 10, critical: 30 }
+  certificate: { warning: 30, critical: 7 }   # jours avant l'expiration
+  cpu_temperature: { warning: 75, critical: 90 }   # °C
+  forecast:    { warning: 30, critical: 7 }    # jours avant qu'un stockage soit plein
+```
+
+| Option | Type | Défaut | Description |
+|---|---|---|---|
+| `title` | texte | `Proxmox` | Titre de la carte |
+| `node` | texte | *(vide)* | Filtre : ne garde que les nœuds, VM et conteneurs dont le nom d'appareil (ou celui de l'appareil parent) contient ce texte, sans tenir compte de la casse |
+| `show_nodes` | booléen | `true` | Afficher les tuiles de nœuds |
+| `show_qemu` | booléen | `true` | Afficher les machines virtuelles |
+| `show_lxc` | booléen | `true` | Afficher les conteneurs LXC |
+| `show_stopped` | booléen | `true` | Afficher aussi les invités arrêtés (atténués) |
+| `show_actions` | booléen | `true` | Afficher les boutons d'action |
+| `show_ip` | booléen | `true` | Afficher l'adresse IP de l'invité |
+| `show_uptime` | booléen | `true` | Afficher l'uptime des invités qui tournent |
+| `show_badges` | booléen | `true` | Badges sur les invités : verrouillé, agent invité injoignable, problème signalé |
+| `show_alerts` | booléen | `true` | Pastilles d'alerte (mises à jour, sauvegarde, tâches en échec, stockage inactif, disque en défaut, ZFS, Ceph, invités sans sauvegarde, certificat, abonnement) |
+| `show_storage` | booléen | `true` | Section des stockages (avec les pools ZFS et Ceph) |
+| `show_disks` | booléen | `true` | Section des disques physiques (SMART) |
+| `show_swap` | booléen | `true` | Jauge de swap sur les nœuds |
+| `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
+| `show_version` | booléen | `true` | Version de Proxmox VE sur les nœuds, avec la nouvelle version disponible (« PVE 9.2.26 → 9.2.27 ») |
+| `show_sort` | booléen | `true` | Boutons de tri (Type, ID, Nom, État) dans l'en-tête de la section des invités |
+| `sort` | texte | `id` | Critère de tri des invités : `id`, `name`, `status` (actifs d'abord), `cpu` ou `mem` (les plus chargés d'abord, invités arrêtés à la fin) |
+| `sort_dir` | texte | `asc` | Sens du tri : `asc` (croissant, du haut vers le bas ↓) ou `desc` (décroissant, du bas vers le haut ↑) |
+| `group_by_node` | booléen | `false` | Regrouper les invités par nœud, avec un intertitre par nœud (clusters de 2 nœuds ou plus). Sans regroupement, le nœud s'affiche dans la ligne de détail de chaque invité |
+| `group_by_type` | booléen | `false` | Regrouper les VM et les conteneurs LXC ; le critère s'applique à l'intérieur de chaque groupe |
+| `type_order` | texte | `vm_first` | Ordre des groupes quand ils sont regroupés : `vm_first` (VM puis LXC) ou `lxc_first` |
+| `show_cluster` | booléen | `true` | Tuile de résumé du cluster (affichée à partir de 2 nœuds) |
+| `show_history` | booléen | `true` | Courbes d'historique CPU et RAM sur les nœuds |
+| `history_hours` | nombre | `24` | Période des courbes en heures : `6`, `12`, `24`, `48` ou `72` |
+| `show_backup` | booléen | `true` | Date de la dernière sauvegarde du nœud (entité « Last backup », désactivée par défaut dans l'intégration) |
+| `show_network` | booléen | `true` | Réseau entrant et sortant sous le nom de chaque invité qui tourne (entités « Réseau descendant / montant », désactivées par défaut) |
+| `network_mode` | texte | `rate` | `rate` : débit par seconde, calculé par la carte ; `total` : volume cumulé depuis le démarrage de l'invité |
+| `network_unit` | texte | `bytes` | Unité du débit : `bytes` (kB/s, MB/s…) ou `bits` (kbit/s, Mbit/s…) |
+| `show_sizes` | booléen | `true` | Tailles réelles : « 660 GB libres / 2,00 TB » sur les stockages, « 19,5 / 32 GB » sous les jauges des nœuds et sous les barres des invités |
+| `show_pressure` | booléen | `true` | Badge de pression (CPU, mémoire ou E/S) sur les invités dont l'indicateur dépasse `thresholds.pressure` |
+| `show_snapshots` | booléen | `true` | Nombre d'instantanés de l'invité et bouton « Créer un instantané » (confirmation par second clic) |
+| `show_forecast` | booléen | `true` | Prévision de remplissage des stockages, pools ZFS et Ceph : pente de l'occupation sur 7 jours d'historique, affichée quand le stockage serait plein dans moins d'un an. Pastille d'alerte selon `thresholds.forecast` |
+| `show_filter_bar` | booléen | `true` | Champ de recherche (nom ou ID) et bouton « Problèmes » au-dessus des invités, à partir de 6 invités. Échap vide la recherche |
+| `compact` | booléen | `false` | Mode compact : barres au lieu des anneaux sur les nœuds, sans courbes ni lignes secondaires (réseau, tailles, part de l'hôte) |
+| `show_temperature` | booléen | `true` | Température CPU des nœuds, dans la bande charge / IO delay ; les autres capteurs de température au survol. Nécessite les capteurs matériels de l'intégration (PVE-mods et lm-sensors sur l'hôte) |
+| `show_host_share` | booléen | `true` | Part du CPU et de la RAM de l'hôte utilisée par chaque invité, sous ses jauges (entités « CPU used of host » et « Memory used of host », désactivées par défaut) |
+| `guest_columns` | texte | `auto` | Colonnes de la liste des invités et des disques : `auto` (2 colonnes si la carte fait au moins 900 px), `1` ou `2` |
+| `collapsed` | liste | *(vide)* | Sections repliées par défaut : `nodes`, `guests`, `storage`, `disks` |
+| `section_order` | liste | *(vide)* | Ordre des sections : celles de la liste d'abord, les autres ensuite dans l'ordre par défaut (nœuds, invités, stockages, disques). Pour masquer une section, utilisez `show_*` |
+| `tap_action` | action | fiche de l'entité | Action au clic sur une tuile (nœud, invité, stockage, disque) : action standard de Home Assistant (`navigate`, `url`, `perform-action`, `none`…). Les pastilles (alertes, version, HA) ouvrent toujours leur entité |
+| `accent` | texte ou RVB | orange Proxmox | Couleur d'accent : couleur CSS (`"#1e88e5"`, `teal`…) ou liste `[r, g, b]` du sélecteur de couleur |
+| `include` | liste | *(vide)* | N'afficher que ces invités (ID ou nom). Vide = tous |
+| `exclude` | liste | *(vide)* | Masquer ces invités (ID ou nom) |
+| `guests` | objet | *(vide)* | Nom (`name`) et icône (`icon`) personnalisés par invité, voir ci-dessous ; réglables aussi dans l'éditeur visuel (section « Noms et icônes des invités ») |
+| `thresholds` | objet | voir ci-dessous | Seuils `warning` / `critical` par jauge, réglables aussi dans l'éditeur visuel (section « Seuils ») |
+| `language` | texte | `auto` | `auto` (langue de Home Assistant) ou un code : `en`, `fr`, `de`, `es`, `it`, `pt`, `nl`, `pl`, `cs`, `sv`, `da`, `nb`, `fi`, `ru`, `uk`, `tr`, `ro`, `hu`, `ja`, `zh` |
+
+## Historique, sauvegarde et cluster
+
+- **Courbes d'historique** : la carte interroge l'historique (*recorder*) de Home Assistant pour les entités CPU et RAM de chaque nœud, puis se rafraîchit toutes les 5 minutes. Si l'historique de ces entités est exclu du *recorder*, les courbes n'apparaissent pas ; `show_history: false` les retire.
+- **Dernière sauvegarde** : elle vient de l'entité « Last backup » du nœud, **désactivée par défaut** dans l'intégration (Paramètres → Appareils et services → le nœud → entités désactivées). Activez aussi « Backup status » pour être alerté d'un échec. L'éditeur indique si l'entité est absente.
+- **Cluster** : la tuile s'affiche quand le cluster compte au moins 2 nœuds, à partir des entités de l'appareil « Proxmox Cluster » ; une perte de quorum (entité d'état de haute disponibilité de l'intégration, si elle est configurée) est signalée.
+
+## Tailles, pression et instantanés
+
+Ces informations viennent d'entités que l'intégration **désactive par défaut** (Paramètres → Appareils et services → l'appareil → entités désactivées). L'éditeur indique, sous chaque option, quand elles manquent.
+
+| Information | Entités à activer | Remarques |
+|---|---|---|
+| Espace libre et total d'un **stockage** | « Disque espace total » et « Disque libre » du stockage | Sans elles, seul le pourcentage est affiché. Les stockages partagés reçoivent une icône, et un stockage désactivé dans Proxmox est grisé |
+| Mémoire et disque d'un **nœud ou d'un invité** | « Mémoire utilisée » + « Mémoire libre » (ou « Mémoire totale »), « Disque espace total » | Le total manquant est déduit des autres valeurs |
+| **Pression** d'un invité | « CPU pressure », « IO pressure », « Memory pressure » | Proxmox 9 ou plus. C'est la part du temps où des tâches ont attendu le CPU, les E/S ou la mémoire : un invité peut être saturé avec un CPU à 20 % |
+| **Instantanés** | « Snapshots » (nombre) et « Create snapshot » (bouton) | Le bouton demande une confirmation et dépend de `show_actions` |
+
+Un badge **bouclier** sur un invité indique qu'il est géré par la haute disponibilité (« HA managed »). Une pastille rouge « stockage presque plein » apparaît en haut de la carte quand un stockage dépasse `thresholds.disk.critical` (90 % par défaut).
+
+## Réseau entrant et sortant
+
+L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau descendant »** (reçu) et **« Réseau montant »** (envoyé). Ils sont **désactivés par défaut** (Paramètres → Appareils et services → l'invité → entités désactivées) et ce sont des **compteurs cumulés** d'octets, pas des débits.
+
+- En mode `rate` (par défaut), la carte calcule le débit entre deux mesures successives. Au chargement, elle lit les dernières mesures dans l'historique de Home Assistant pour afficher un débit tout de suite ; sans historique, le débit apparaît après deux relevés de l'intégration. Une remise à zéro du compteur (redémarrage de l'invité) affiche « – » une fois.
+- En mode `total`, elle affiche le volume cumulé depuis le démarrage de l'invité (par exemple « 12,0 GB »).
+- `network_unit: bits` convertit les débits en bits par seconde (utile pour comparer à un débit de box ou de lien).
+- La ligne n'apparaît que pour les invités qui tournent et dont les capteurs sont activés ; l'éditeur indique quand aucun invité n'en a. `show_network: false` la retire.
+
+## ZFS, Ceph, sauvegardes, certificat, abonnement, réplication et HA
+
+| Information | Entité de l'intégration | Affichage |
+|---|---|---|
+| **Pools ZFS** | appareil « ZFS nœud: pool » (état et occupation, actives par défaut) | Tuile dans les stockages, bordée de rouge avec l'état (`DEGRADED`, `FAULTED`…) quand le pool n'est pas `ONLINE` ; pastille « pool ZFS dégradé » |
+| **Ceph** | « Ceph health » et « Ceph used percentage » (+ « Ceph used » / « Ceph total » pour les tailles) du cluster, **désactivées par défaut** | Tuile « Ceph » dans les stockages ; pastille orange (avertissement) ou rouge (erreur) |
+| **Invités sans sauvegarde** | « Guests without backup » du cluster (nécessite les identifiants optionnels d'administration du cluster) | Pastille « 2 invités sans sauvegarde » (liste au survol) et badge sur chaque invité concerné ; `include` / `exclude` s'appliquent, et `show_backup: false` retire les deux |
+| **Certificat** | « Certificate expires » du nœud, **désactivée par défaut** | Pastille orange à 30 jours de l'expiration, rouge à 7 jours ou une fois expiré (`thresholds.certificate`) |
+| **Abonnement** | « Subscription » du nœud, **désactivée par défaut** | Pastille rouge quand l'abonnement est expiré, invalide ou suspendu (rien sans abonnement) |
+| **Réplication** | « Replication failing » du nœud, **désactivée par défaut** | Pastille rouge « réplication en échec » (tâches et erreur au survol) et badge sur l'invité concerné |
+| **Haute disponibilité** | « HA armed state », « HA resources in error », « CRM master stale » du cluster (identifiants optionnels d'administration du cluster) | Pastille quand la HA est désarmée, quand des ressources sont en erreur ou quand le gestionnaire ne répond plus ; état « HA » sur la tuile du cluster |
+
+Le préfixe « nœud · » s'ajoute aux pastilles de certificat, d'abonnement et de réplication quand il y a plusieurs nœuds. Les pastilles dépendent de `show_alerts`, les tuiles de `show_storage`.
+
+## Filtrer et renommer les invités
+
+```yaml
+type: custom:proxmox-card
+exclude:
+  - openwrt        # par nom (ou une partie du nom)
+  - "120"          # par ID
+guests:
+  "104":           # clé = ID ou nom exact
+    name: Routeur
+    icon: mdi:router-wireless
+  docker:
+    icon: mdi:docker
+```
+
+- Une entrée **numérique** correspond à l'ID exact ; une entrée **texte** correspond au nom exact, ou à une partie du nom (sans tenir compte de la casse).
+- `include` et `exclude` s'appliquent partout : liste, compteurs de l'en-tête et tri. Si les deux sont renseignés, `exclude` l'emporte.
+- `include` et `exclude` se règlent aussi dans l'éditeur visuel (section « Filtres »). Le renommage et les icônes (`guests`) se règlent dans la section « Noms et icônes des invités » de l'éditeur (une ligne par invité détecté, clé = ID), ou en YAML.
+- Le tri par nom utilise le nom affiché, donc le nom personnalisé.
+
+## Carte d'un seul invité
+
+Pour afficher une seule VM ou un seul conteneur ailleurs dans un tableau de bord, ajoutez « Proxmox Guest Card » depuis le sélecteur de cartes, ou en YAML :
+
+```yaml
+type: custom:proxmox-guest-card
+guest: 104            # ID ou nom de l'invité
+show_details: true    # courbes CPU / RAM et alertes dépliées (par défaut)
+```
+
+C'est la même tuile que dans la carte principale (jauges, réseau, badges, boutons et menu « ⋯ »), sans en-tête ni section. Les options d'affichage de la carte principale s'appliquent (`show_actions`, `show_history`, `show_network`, `show_ip`, `show_badges`, `show_snapshots`, `show_host_share`, `tap_action`, `thresholds`, `language`…), et l'éditeur visuel propose la liste des invités détectés.
+
+## Seuils des jauges
+
+| Jauge | Orange à partir de | Rouge à partir de |
+|---|---|---|
+| `cpu` | 70 % | 90 % |
+| `memory` | 80 % | 95 % |
+| `disk` (nœuds, invités, stockages) | 80 % | 90 % |
+| `temperature` (disques physiques) | 55 °C | 70 °C |
+| `wear` (usure des disques) | 70 % | 90 % |
+| `io` (IO delay des nœuds) | 5 % | 15 % |
+| `pressure` (pression des invités, en %) | 10 % | 30 % |
+| `cpu_temperature` (température CPU des nœuds) | 75 °C | 90 °C |
+| `forecast` (jours avant qu'un stockage soit plein, au rythme des 7 derniers jours ; plus bas = plus grave) | 30 jours | 7 jours |
+| `certificate` (jours avant l'expiration du certificat d'un nœud ; plus bas = plus grave) | 30 jours | 7 jours (rouge aussi une fois expiré) |
+
+Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
+
+## Couleurs et thèmes
+
+La carte reprend les couleurs du thème Home Assistant (`--success-color`, `--warning-color`, `--error-color`…). Un thème peut aussi les régler pour cette carte seulement :
+
+```yaml
+# dans un thème (themes.yaml)
+mon_theme:
+  proxmox-card-accent: "#1e88e5"     # couleur d'accent (l'option accent: de la carte l'emporte)
+  proxmox-card-ok: "#2e7d32"         # vert : en ligne, jauges normales
+  proxmox-card-warning: "#f9a825"    # orange
+  proxmox-card-critical: "#c62828"   # rouge
+  proxmox-card-off: "#9e9e9e"        # arrêté, inconnu
+  proxmox-card-tile: "rgba(127,127,127,.08)"   # fond des tuiles
+  proxmox-card-line: "rgba(127,127,127,.15)"   # traits et bordures
+```
+
+Dans un thème, chaque nom devient la variable CSS `--proxmox-card-…`. Sans thème, ces variables peuvent aussi être posées par card-mod, mais ce n'est pas nécessaire.
+
+## Quelles entités sont utilisées ?
+
+La carte parcourt les entités dont la plateforme est `proxmoxve_custom`, les regroupe par appareil, puis reconnaît leur rôle grâce à leur clé de traduction ou à leur identifiant :
+
+| Appareil | Rôles lus |
+|---|---|
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 / 5 / 15 min, IO delay, températures (capteurs matériels, sans clé de traduction), version, réplication en échec, boutons du « ⋯ » (start_all, stop_all, suspend_all, backup_all, reboot, shutdown, wakeonlan), expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
+| **VM (QEMU)** et **conteneur (LXC)** | statut (détaillé si « Status » brut existe), nœud actuel, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, part de l'hôte (CPU / mémoire), boutons start / shutdown / reboot / stop / snapshot et ceux du « ⋯ » (suspend, resume, hibernate, reset, backup, unlock) |
+| **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
+| **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement, cycles d'alimentation, coupures brutales |
+| **Pool ZFS** (`ZFS nœud: pool`) | état, occupation (%), taille, utilisé |
+| **Proxmox Cluster** | CPU, mémoire, quorum, santé et occupation de Ceph, invités sans sauvegarde, état de la HA (armée / désarmée), ressources HA en erreur, gestionnaire HA injoignable, boutons Arm / Disarm HA |
+
+Le type d'appareil est déterminé d'après son nom et son modèle (`Node …`, `QEMU … (109)`, `LXC … (516)`, `Storage …`, `Disk …`). Le numéro entre parenthèses devient le VMID affiché.
+
+> **Important** : une partie des entités de l'intégration est **désactivée par défaut** (mémoire, boutons, etc.). Si une jauge affiche « – » ou si les boutons manquent, activez l'entité concernée : Réglages → Appareils et services → *Proxmox VE* → l'appareil → entités désactivées → ⚙ → **Activer**, puis rechargez l'intégration si nécessaire.
+
+## Boutons d'action
+
+| Bouton | Visible si | Entité utilisée |
+|---|---|---|
+| Démarrer | l'invité est arrêté | bouton « Start » |
+| Arrêter (shutdown) | l'invité tourne | bouton « Shutdown » |
+| Redémarrer | l'invité tourne | bouton « Reboot » |
+| Forcer l'arrêt | l'invité tourne et le bouton « Shutdown » n'existe pas | bouton « Stop » |
+
+Les actions **Arrêter**, **Redémarrer** et **Forcer l'arrêt** demandent un **second clic** dans les 4 secondes (le bouton devient rouge). **Démarrer** s'exécute directement.
+
+Côté Proxmox, l'utilisateur de l'intégration doit avoir le privilège `VM.PowerMgmt` ; sans lui, les boutons ne sont pas créés par l'intégration.
+
+### Menu « ⋯ »
+
+Les autres actions sont regroupées dans un menu « ⋯ », à droite des boutons d'un invité, et en haut à droite de la tuile d'un nœud ou du cluster. Le menu ne propose que les actions possibles dans l'état actuel, et seulement si l'entité bouton correspondante existe (elles sont **toutes désactivées par défaut** dans l'intégration). Un seul menu est ouvert à la fois ; il se referme après une action.
+
+| Où | Action | Visible si | Confirmation |
+|---|---|---|---|
+| Invité | Reprendre | l'invité est en pause ou suspendu | non |
+| Invité | Suspendre, Réinitialiser | l'invité tourne | oui |
+| Invité (VM) | Mettre en veille prolongée | la VM tourne | oui |
+| Invité | Sauvegarder maintenant | toujours | oui |
+| Invité | Déverrouiller | l'invité est verrouillé | oui |
+| Nœud | Wake-on-LAN | le nœud est hors ligne | non |
+| Nœud | Démarrer / Arrêter / Suspendre / Sauvegarder tous les invités, Redémarrer, Éteindre le nœud | le nœud est en ligne | oui |
+| Cluster | Armer / Désarmer la HA | selon l'état de la HA | oui |
+
+Pour masquer tous les boutons et les menus : `show_actions: false`.
+
+> Les sections et informations sans entité correspondante (par exemple pas de disques SMART, pas d'agent invité) n'apparaissent simplement pas.
+
+## Dépannage
+
+| Symptôme | Cause probable / solution |
+|---|---|
+| « Aucune entité Proxmox trouvée » | L'intégration Proxmox VE Custom n'est pas installée, ou aucun nœud / invité n'est suivi dans ses options. Avec seulement l'intégration Proxmox VE native de Home Assistant, la carte ne trouve rien d'utilisable |
+| La carte n'apparaît pas dans le sélecteur | Ressource non ajoutée ou cache : vérifier `/local/proxmox-card.js` (type module) et faire Ctrl+F5 |
+| Jauge RAM ou disque à « – » | Entité de mémoire / disque désactivée par défaut : l'activer (voir plus haut). Un conteneur arrêté remonte son disque en « inconnu » |
+| Pas de boutons | Entités `button.*` désactivées, ou privilège `VM.PowerMgmt` manquant côté Proxmox. L'éditeur visuel l'indique sous l'option « Boutons marche / arrêt » (« 6 invités sur 6 ont des boutons… » ou « Aucun bouton trouvé… ») |
+| Un invité manque | Les modèles (templates) ne sont jamais suivis ; vérifier aussi `node` et `show_stopped` |
+| Pas d'IP affichée | Capteur « IP address » absent : nécessite l'agent invité (VM) ou les droits `VM.Audit` (LXC) |
+| Mauvais capteur reconnu, information manquante | Dans l'éditeur visuel de la carte, cliquez sur **Copier le diagnostic** (en bas) puis [ouvrez une issue](https://github.com/aubierr/ha-proxmox-card/issues/new/choose) et collez-le : il liste ce que la carte a reconnu (appareils, rôles, entités ignorées) et les versions. Il contient vos identifiants d'entités : relisez-le avant de l'envoyer |
+
+## Développement
+
+Le projet est un unique fichier JavaScript sans étape de build : [`dist/proxmox-card.js`](dist/proxmox-card.js).
+
+Une page de test avec un faux objet `hass` est fournie dans [`test/`](test/index.html). Les modules ES ne se chargent pas depuis `file://`, il faut donc un petit serveur :
+
+```bash
+python -m http.server 8765
+# puis ouvrir http://localhost:8765/test/index.html
+```
+
+Paramètres de la page de test : `?lang=en` (langue), `?theme=dark`, `?w=560` (largeur de la carte en px), `?single=1` (une seule carte), `?shot=1` (sans bouton, pour les captures), `?cfg={…}` (JSON ajouté à la configuration), `?guest=104` (carte d'un seul invité), `?calm=1` (aucune alerte), `?legacy=1` (ancien domaine). Les icônes sont chargées depuis Internet (jsDelivr).
+
+Les captures du README (`docs/screenshots/`) sont générées depuis cette page avec Edge ou Chrome en mode headless :
+
+```bash
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-light.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=800,1870 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-dark.png "http://localhost:8765/test/index.html?lang=en&single=1&w=760&shot=1&theme=dark"
+msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=500,1770 --virtual-time-budget=15000 --screenshot=docs/screenshots/card-mobile.png "http://localhost:8765/test/index.html?lang=fr&single=1&w=460&shot=1&theme=dark&cfg=%7B%22node%22%3A%22pve%22%7D"
+```
+
+La hauteur de la fenêtre (`--window-size`) doit suivre celle de la carte : à ajuster quand la carte grandit.
+
+### Vérifications automatiques
+
+Le workflow [`validate.yml`](.github/workflows/validate.yml) s'exécute à chaque *push* et chaque semaine :
+
+- **HACS** : validation officielle du dépôt ([hacs/action](https://github.com/hacs/action)) ;
+- **JavaScript** : vérification de la syntaxe du module ;
+- **Traductions** : `node test/check-i18n.mjs` vérifie que les 20 langues de la carte et de l'éditeur sont complètes, ainsi que les formes du pluriel (« 1 tâche en échec », « 5 nieudanych zadań ») ; `node test/check-format.mjs` vérifie le formatage des tailles, le calcul du débit réseau, la prévision de remplissage et la courbe réseau ;
+- **DOM** : `node test/check-dom.mjs` vérifie la mise à jour en place de la carte (seul ce qui change est modifié, le contenu des icônes est préservé) ;
+- **Entités** : `node test/check-roles.mjs` vérifie le rôle attribué à chaque entité de l'intégration (120 clés de traduction). Quand l'intégration ajoute ou renomme une entité, ajoutez-la à la table du test ;
+- **Version** : `node test/check-version.mjs` vérifie que la carte (`VERSION`), la première entrée du changelog et, sur un tag, le tag annoncent la même version.
+
+### Publier une version
+
+1. Mettre à jour `VERSION` dans [`dist/proxmox-card.js`](dist/proxmox-card.js) et ajouter l'entrée `## x.y.z` en tête de [`CHANGELOG.md`](CHANGELOG.md).
+2. Pousser sur `main`, puis pousser le tag : `git tag vx.y.z && git push origin vx.y.z`.
+3. Le workflow [`release.yml`](.github/workflows/release.yml) relance les vérifications et publie la release GitHub avec les notes de cette version du changelog ; HACS la propose ensuite.
+
+## Remerciements
+
+- [dougiteixeira/proxmoxve](https://github.com/dougiteixeira/proxmoxve) pour l'intégration Proxmox VE.
+
+## Licence
+
+[MIT](LICENSE)

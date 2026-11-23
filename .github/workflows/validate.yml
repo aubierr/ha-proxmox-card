@@ -33,8 +33,10 @@ jobs:
           node --check "$RUNNER_TEMP/proxmox-card.mjs"
       - name: Check that every language is complete
         run: node test/check-i18n.mjs
-      - name: Check size formatting and network rate
+      - name: Check size formatting, network rate and fill forecast
         run: node test/check-format.mjs
+      - name: Check the in-place DOM update
+        run: node test/check-dom.mjs
       - name: Check the entity classification
         run: node test/check-roles.mjs
       - name: Check that the card, the changelog and the tag agree on the version

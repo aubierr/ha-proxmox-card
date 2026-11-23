@@ -148,6 +148,11 @@
       if (msg.type !== "history/history_during_period") throw new Error("unsupported " + msg.type);
       const end = Date.parse(msg.end_time), start = Date.parse(msg.start_time), out = {};
       for (const id of msg.entity_ids) {
+        if (netRates[id] !== undefined && end - start > 3600e3) { // a whole period (network curve of a guest's detail): one sample every 5 min, rate varying over the day
+          const n = Math.floor((end - start) / 300e3); let acc = 0; const pts = [];
+          for (let i = 0; i <= n; i++) { pts.push({ lu: (start + i * 300e3) / 1000, s: String(acc) }); acc += (netRates[id] * (1 + 0.8 * Math.sin(i / 20)) * 300) / 1e6; } // MB
+          out[id] = pts; continue;
+        }
         if (netRates[id] !== undefined) { // 21 samples, one per minute, ending with the current value
           const last = Date.parse(states[id].last_updated), mb = Number(states[id].state);
           out[id] = Array.from({ length: 21 }, (_, i) => ({ lu: (last - (20 - i) * 60e3) / 1000, s: String(mb - (netRates[id] * (20 - i) * 60) / 1e6) }));

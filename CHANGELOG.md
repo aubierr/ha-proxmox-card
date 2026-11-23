@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0
+
+- Diagnostic : bouton « Copier le diagnostic » dans l'éditeur visuel. Il copie ce que la carte a reconnu (appareils, rôles, entités ignorées, versions de Home Assistant et de l'intégration), prêt à coller dans une issue GitHub.
+- Performance : le classement des entités est mis en cache tant que le registre ne change pas ; sur une grosse installation, une mise à jour ne parcourt plus toutes les entités de Home Assistant.
+- Courbes réseau (reçu / envoyé) dans le détail d'un invité, avec le débit maximal de la période.
+- Thèmes : couleurs réglables par un thème Home Assistant avec les variables `--proxmox-card-accent`, `-ok`, `-warning`, `-critical`, `-off`, `-tile` et `-line`.
+- README en anglais (`README.md`) et en français (`README.fr.md`).
+- Tests : prévision de remplissage et courbe réseau dans `check-format.mjs`, nouveau `test/check-dom.mjs` pour la mise à jour en place du DOM.
+
 ## 1.5.0
 
 - Prévision de remplissage (`show_forecast`, `thresholds.forecast`) : à partir des 7 derniers jours d'historique, chaque stockage, pool ZFS et Ceph qui se remplit affiche « plein dans ~23 j » ; pastille orange à 30 jours, rouge à 7 jours.
