@@ -5,7 +5,12 @@
 - Compatibilité avec l'intégration Proxmox VE Custom 6.0 : son domaine passe de `proxmoxve` à `proxmoxve_custom`. La carte lit les entités `proxmoxve_custom`, et celles de `proxmoxve` seulement quand l'intégration n'est pas encore migrée (5.x). Quand l'intégration native Proxmox VE de Home Assistant (domaine `proxmoxve`) est installée en même temps, ses entités sont ignorées.
 - Nouvelle version de Proxmox VE : la pastille de version d'un nœud passe en orange (« PVE 9.2.26 → 9.2.27 ») quand l'entité de mise à jour du nœud annonce une nouvelle version ; un clic ouvre cette entité (notes de version). Seule une vraie nouvelle version de Proxmox VE est signalée, pas une simple mise à jour de paquets.
 - Pastille « mises à jour » : utilise l'entité de mise à jour du nœud quand le capteur « Update available » est désactivé.
-- Textes : le message « aucune entité trouvée » nomme `proxmoxve_custom` ; nouveau texte dans les 20 langues. Page de test : domaine `proxmoxve_custom`, `?legacy=1` pour l'ancien domaine.
+- Pools ZFS : tuile par pool dans les stockages (état, occupation, tailles), bordée de rouge avec l'état quand le pool n'est pas `ONLINE`, et pastille « pool ZFS dégradé ».
+- Ceph : tuile « Ceph » dans les stockages (santé, occupation, tailles) et pastille orange ou rouge quand la santé passe en avertissement ou en erreur.
+- Invités sans sauvegarde : pastille « N invités sans sauvegarde » (liste au survol) et badge sur chaque invité qu'aucune tâche de sauvegarde ne couvre ; `include` / `exclude` s'appliquent.
+- Certificat et abonnement des nœuds : pastille quand le certificat expire bientôt (`thresholds.certificate`, 30 / 7 jours) ou a expiré, et quand l'abonnement est expiré, invalide ou suspendu.
+- Pastilles d'alerte : un clic ouvre l'entité concernée, et une infobulle donne le détail.
+- Textes : le message « aucune entité trouvée » nomme `proxmoxve_custom` ; nouveau texte dans les 20 langues. Page de test : domaine `proxmoxve_custom`, `?legacy=1` pour l'ancien domaine, `?calm=1` pour un état sans alerte.
 
 ## 1.1.1
 

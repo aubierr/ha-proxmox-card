@@ -27,6 +27,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - [Historique, sauvegarde et cluster](#historique-sauvegarde-et-cluster)
 - [Tailles, pression et instantanés](#tailles-pression-et-instantanés)
 - [Réseau entrant et sortant](#réseau-entrant-et-sortant)
+- [ZFS, Ceph, sauvegardes, certificat et abonnement](#zfs-ceph-sauvegardes-certificat-et-abonnement)
 - [Filtrer et renommer les invités](#filtrer-et-renommer-les-invités)
 - [Seuils des jauges](#seuils-des-jauges)
 - [Quelles entités sont utilisées ?](#quelles-entités-sont-utilisées-)
@@ -40,7 +41,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **Découverte automatique** : aucune entité à lister, la carte retrouve toutes les entités de l'intégration `proxmoxve_custom` (ou `proxmoxve` avant la 6.0 de l'intégration).
 - **En-tête de synthèse** : nombre de nœuds en ligne, de VM et de conteneurs actifs (pastille orange ou rouge si un nœud est hors ligne).
 - **Résumé du cluster** : avec 2 nœuds ou plus, une tuile « Cluster » (CPU et RAM globaux, nœuds en ligne, quorum perdu signalé).
-- **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut.
+- **Alertes** : pastilles sous l'en-tête, visibles seulement quand elles s'appliquent : mises à jour disponibles, sauvegarde en cours, tâches en échec, stockage inactif, disque en défaut, pool ZFS dégradé, Ceph en avertissement ou en erreur, invités sans sauvegarde, certificat bientôt expiré, abonnement non valide. Un clic sur une pastille ouvre l'entité concernée.
 - **Tuiles de nœuds** : statut, uptime, jauges circulaires CPU, RAM et disque, courbes d'historique CPU et RAM (24 h par défaut, lues dans l'historique de Home Assistant), barre de swap, puis une bande bien visible avec la charge système, l'IO delay (orange / rouge selon `thresholds.io`) et la date de la dernière sauvegarde (rouge si elle a échoué) ; la version de Proxmox s'affiche en pastille à côté du nom du nœud.
 - **Liste des invités** (VM et LXC) : statut, nom, numéro, adresse IP, uptime, jauges CPU, RAM et disque, et badges (verrouillé, agent invité injoignable, problème signalé).
 - **Tailles réelles** : espace libre et total des stockages, mémoire et disque utilisés / totaux des nœuds et des invités (affichés, ou au survol).
@@ -52,7 +53,7 @@ Elle s'appuie sur l'intégration [**Proxmox VE Custom**](https://github.com/doug
 - **Mise en page** : les invités et les disques passent sur 2 colonnes quand la carte est large (`guest_columns`), couleur d'accent réglable (`accent`).
 - **Léger** : la carte ne se met à jour que lorsqu'une des valeurs qu'elle affiche change, pas à chaque événement de la maison.
 - **Filtres** : afficher seulement certains invités (`include`) ou en masquer (`exclude`), les renommer et changer leur icône (`guests`).
-- **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif.
+- **Stockages** : occupation de chaque stockage (local, LVM, partages…) et indicateur actif / inactif, plus les **pools ZFS** (état `ONLINE`, `DEGRADED`…) et **Ceph** (santé et occupation du cluster).
 - **Disques physiques** : santé SMART, température, usure et heures de fonctionnement.
 - **Jauges colorées** (circulaires pour les nœuds, barres dégradées ailleurs) : vert, orange, rouge selon des seuils réglables.
 - **Boutons d'action** : démarrer, arrêter proprement, redémarrer, avec confirmation par second clic pour les actions risquées.
@@ -157,6 +158,7 @@ thresholds:
   wear:        { warning: 70, critical: 90 }
   io:          { warning: 5,  critical: 15 }
   pressure:    { warning: 10, critical: 30 }
+  certificate: { warning: 30, critical: 7 }   # jours avant l'expiration
 ```
 
 | Option | Type | Défaut | Description |
@@ -171,8 +173,8 @@ thresholds:
 | `show_ip` | booléen | `true` | Afficher l'adresse IP de l'invité |
 | `show_uptime` | booléen | `true` | Afficher l'uptime des invités qui tournent |
 | `show_badges` | booléen | `true` | Badges sur les invités : verrouillé, agent invité injoignable, problème signalé |
-| `show_alerts` | booléen | `true` | Pastilles d'alerte (mises à jour, sauvegarde, tâches en échec, stockage inactif, disque en défaut) |
-| `show_storage` | booléen | `true` | Section des stockages |
+| `show_alerts` | booléen | `true` | Pastilles d'alerte (mises à jour, sauvegarde, tâches en échec, stockage inactif, disque en défaut, ZFS, Ceph, invités sans sauvegarde, certificat, abonnement) |
+| `show_storage` | booléen | `true` | Section des stockages (avec les pools ZFS et Ceph) |
 | `show_disks` | booléen | `true` | Section des disques physiques (SMART) |
 | `show_swap` | booléen | `true` | Jauge de swap sur les nœuds |
 | `show_load` | booléen | `true` | Charge système et IO delay sur les nœuds |
@@ -229,6 +231,18 @@ L'intégration expose pour chaque VM et conteneur deux capteurs **« Réseau des
 - `network_unit: bits` convertit les débits en bits par seconde (utile pour comparer à un débit de box ou de lien).
 - La ligne n'apparaît que pour les invités qui tournent et dont les capteurs sont activés ; l'éditeur indique quand aucun invité n'en a. `show_network: false` la retire.
 
+## ZFS, Ceph, sauvegardes, certificat et abonnement
+
+| Information | Entité de l'intégration | Affichage |
+|---|---|---|
+| **Pools ZFS** | appareil « ZFS nœud: pool » (état et occupation, actives par défaut) | Tuile dans les stockages, bordée de rouge avec l'état (`DEGRADED`, `FAULTED`…) quand le pool n'est pas `ONLINE` ; pastille « pool ZFS dégradé » |
+| **Ceph** | « Ceph health » et « Ceph used percentage » (+ « Ceph used » / « Ceph total » pour les tailles) du cluster, **désactivées par défaut** | Tuile « Ceph » dans les stockages ; pastille orange (avertissement) ou rouge (erreur) |
+| **Invités sans sauvegarde** | « Guests without backup » du cluster (nécessite les identifiants optionnels d'administration du cluster) | Pastille « 2 invités sans sauvegarde » (liste au survol) et badge sur chaque invité concerné ; `include` / `exclude` s'appliquent, et `show_backup: false` retire les deux |
+| **Certificat** | « Certificate expires » du nœud, **désactivée par défaut** | Pastille orange à 30 jours de l'expiration, rouge à 7 jours ou une fois expiré (`thresholds.certificate`) |
+| **Abonnement** | « Subscription » du nœud, **désactivée par défaut** | Pastille rouge quand l'abonnement est expiré, invalide ou suspendu (rien sans abonnement) |
+
+Le préfixe « nœud · » s'ajoute aux pastilles de certificat et d'abonnement quand il y a plusieurs nœuds. Les pastilles dépendent de `show_alerts`, les tuiles de `show_storage`.
+
 ## Filtrer et renommer les invités
 
 ```yaml
@@ -260,6 +274,7 @@ guests:
 | `wear` (usure des disques) | 70 % | 90 % |
 | `io` (IO delay des nœuds) | 5 % | 15 % |
 | `pressure` (pression des invités, en %) | 10 % | 30 % |
+| `certificate` (jours avant l'expiration du certificat d'un nœud ; plus bas = plus grave) | 30 jours | 7 jours (rouge aussi une fois expiré) |
 
 Vous pouvez ne surcharger qu'une partie des valeurs ; le reste garde sa valeur par défaut.
 
@@ -269,10 +284,12 @@ La carte parcourt les entités dont la plateforme est `proxmoxve_custom`, les re
 
 | Appareil | Rôles lus |
 |---|---|
-| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
+| **Nœud** | statut, CPU, mémoire (% ou utilisée / totale), disque (% ou utilisé / total), swap, uptime, charge 1 min, IO delay, version, expiration du certificat, abonnement, mise à jour disponible et nombre de mises à jour, entité de mise à jour (`update`, nouvelle version de Proxmox VE), sauvegarde en cours, tâches en échec |
 | **VM (QEMU)** et **conteneur (LXC)** | statut, CPU, mémoire, disque, adresse IP, uptime, verrouillé, agent invité, santé, boutons start / shutdown / reboot / stop |
 | **Stockage** (`Storage nœud/nom`) | disque utilisé (%), stockage actif |
 | **Disque physique** (`Disk nœud: modèle`) | santé, température, usure (ou vie restante), heures de fonctionnement |
+| **Pool ZFS** (`ZFS nœud: pool`) | état, occupation (%), taille, utilisé |
+| **Proxmox Cluster** | CPU, mémoire, quorum, santé et occupation de Ceph, invités sans sauvegarde |
 
 Le type d'appareil est déterminé d'après son nom et son modèle (`Node …`, `QEMU … (109)`, `LXC … (516)`, `Storage …`, `Disk …`). Le numéro entre parenthèses devient le VMID affiché.
 

@@ -72,6 +72,19 @@
    ["sensor", "load_1m", 0.9], ["sensor", "io_wait", 0.1]].forEach(([d, k, v]) => ent("n2", d, k, v));
   dev("c1", "Proxmox Cluster", "Cluster");
   [["sensor", "cluster_cpu_used", 31], ["sensor", "cluster_memory_used_perc", 59], ["sensor", "cluster_nodes_online", 2], ["binary_sensor", "quorate", "on"]].forEach(([d, k, v]) => ent("c1", d, k, v));
+  // ZFS pools, Ceph, backup coverage, certificate and subscription (?calm=1: everything healthy)
+  const calm = !!q.get("calm");
+  dev("z1", "ZFS pve: rpool", "ZFS", "n1"); dev("z2", "ZFS srv2: tank", "ZFS", "n2");
+  [["z1", "ONLINE", 31, 1.8e12], ["z2", calm ? "ONLINE" : "DEGRADED", 64, 8e12]].forEach(([id, h, pct, size]) => {
+    ent(id, "sensor", "zfs_health", h); ent(id, "sensor", "zfs_used_perc", pct); ent(id, "sensor", "zfs_free_perc", 100 - pct);
+    ent(id, "sensor", "zfs_total", size / 1e9, { unit_of_measurement: "GB" }); ent(id, "sensor", "zfs_used", (size * pct) / 100 / 1e9, { unit_of_measurement: "GB" });
+  });
+  ent("c1", "sensor", "ceph_health", calm ? "ok" : "warning"); ent("c1", "sensor", "ceph_used_perc", 63);
+  ent("c1", "sensor", "ceph_used", 3.15, { unit_of_measurement: "TB" }); ent("c1", "sensor", "ceph_total", 5, { unit_of_measurement: "TB" });
+  const nb = calm ? [] : [{ vmid: 200, type: "qemu", name: "windows" }, { vmid: 103, type: "lxc", name: "immich" }];
+  ent("c1", "sensor", "guests_without_backup", nb.length, { guests: nb });
+  ent("n1", "sensor", "certificate_expires", new Date(Date.now() + (calm ? 400 : 12.5) * 864e5).toISOString());
+  ent("n2", "sensor", "subscription_status", calm ? "active" : "expired");
   const STOR = { s1: 100e9, s2: 800e9, s3: 4e12, s4: 2e12 };
   for (const [id, n, pct, act] of [["s1", "local", 11, "on"], ["s2", "local-lvm", 52, "on"], ["s3", "data", 88, "on"], ["s4", "backup", 67, "on"]]) {
     dev(id, `Storage pve/${n}`, "Storage", "n1"); ent(id, "sensor", "disk_used_perc", pct); ent(id, "binary_sensor", "storage_active", act);
